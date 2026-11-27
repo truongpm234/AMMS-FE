@@ -15,6 +15,7 @@ import {
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
+import { getErrorMessage } from "@/lib/httpAxios";
 
 const { Title, Text } = Typography
 
@@ -120,13 +121,33 @@ export default function RegisterPage() {
         full_name: values.name,
       }
 
-      await authApiRequest.register(otp, registerData)
+      const res: any = await authApiRequest.register(otp, registerData)
+
+      /*
+       * BE trả HTTP 200 kể cả khi OTP sai:
+       *   { "status": "Success",        "user_id": 42, "role_id": 5, ... }
+       *   { "status": "Register Failed","user_id": 0,  "role_id": null, ... }
+       * => Phải kiểm tra `status === "Success"`, KHÔNG chỉ dựa vào res.ok.
+       * (Trước đây FE luôn hiện "Đăng ký thành công" dù OTP sai.)
+       */
+      const status = res?.status ?? res?.data?.status
+      if (status !== "Success") {
+        message.error(
+          'Đăng ký thất bại. Mã OTP có thể đã hết hạn hoặc không đúng, vui lòng thử lại.'
+        )
+        return
+      }
 
       message.success('Đăng ký thành công! Chào mừng bạn đến với hệ thống. Vui lòng đăng nhập.')
       router.push('/login')
     } catch (error: any) {
       console.error('Registration error:', error)
-      message.error(error?.response?.data?.message || 'Đăng ký thất bại. Vui lòng thử lại.')
+      // Đọc ProblemDetails `detail` trước, fallback `message` cũ
+      message.error(
+        error?.message ||
+          error?.response?.data?.detail ||
+          getErrorMessage(error, 'Đăng ký thất bại. Vui lòng thử lại.')
+      )
     } finally {
       setLoadingSubmit(false)
     }

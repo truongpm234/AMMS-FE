@@ -3,6 +3,7 @@
 import axios from "@/apiRequests/axios";
 import { materialsApi } from "@/apiRequests/materials";
 import { requestOrderApi } from "@/apiRequests/request";
+import { getErrorMessage } from "@/lib/httpAxios";
 import { FloatingInputAntd } from "@/components/Input/FloatingInput";
 import { formatCoatingType, formatProcess } from "@/lib/estimationUtils";
 import { RequestDetailResponse } from "@/lib/request.types";
@@ -123,14 +124,18 @@ export default function ManagerRequestDetailPage() {
 
         const fetchPaperTypes = async () => {
             try {
-                const response = await materialsApi.getAllPaperTypes();
-                if (response?.paperTypes && Array.isArray(response.paperTypes)) {
+                // BE trả PascalCase Code/Name/StockQty/Price, không phải paperTypes/pt.code
+                const raw: any = await materialsApi.getAllPaperTypes();
+                const payload = raw?.data ?? raw;
+                const list: any[] = payload?.PaperTypes ?? payload?.paperTypes ?? [];
+
+                if (Array.isArray(list)) {
                     setPaperTypes(
-                        response.paperTypes.map((pt: any) => ({
-                            code: pt.code,
-                            name: pt.name,
-                            stock: pt.stockQty || 0,
-                            value: pt.code,
+                        list.map((pt: any) => ({
+                            code: pt.Code ?? pt.code,
+                            name: pt.Name ?? pt.name,
+                            stock: Number(pt.StockQty ?? pt.stockQty ?? pt.stock_qty ?? 0),
+                            value: pt.Code ?? pt.code,
                         }))
                     );
                 }
@@ -167,17 +172,19 @@ export default function ManagerRequestDetailPage() {
 
         setCheckingContract(true);
         try {
-            await requestOrderApi.contractCheckStatus({
+            // contract-check-status không tồn tại, duyệt/từ chối dùng PUT /api/Requests/approval
+            // status dùng Declined (Rejected là khách từ chối deal)
+            await requestOrderApi.approval({
                 request_id: Number(requestId),
-                is_check_contract: isCheck,
-                note: note
+                note: note,
+                status: isCheck ? "Verified" : "Declined",
             });
             message.success(isCheck ? "Đã duyệt hợp đồng thành công" : "Đã từ chối hợp đồng");
             setIsContractModalVisible(false);
             window.location.reload();
         } catch (error) {
             console.error("Error checking contract:", error);
-            message.error("Có lỗi xảy ra khi duyệt hợp đồng, vui lòng thử lại");
+            message.error(getErrorMessage(error, "Có lỗi xảy ra khi duyệt hợp đồng, vui lòng thử lại"));
         } finally {
             setCheckingContract(false);
         }

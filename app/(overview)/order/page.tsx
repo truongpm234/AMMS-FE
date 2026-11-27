@@ -421,13 +421,13 @@ export default function GuestOrderPage() {
 
         setProductSuggestions(groupedOptions);
 
-        if (Array.isArray(papersRes)) {
-          setPaperTypes(papersRes);
-        } else if ((papersRes as any)?.data) {
-          setPaperTypes((papersRes as any).data);
-        } else if ((papersRes as any)?.paperTypes) {
-          setPaperTypes((papersRes as any).paperTypes);
-        }
+        /*
+         * FIX (API_CONFIRMATION.md mục 1): BE trả `{ PaperTypes, MostStockPaperNames }`
+         * với PascalCase — không phải `paperTypes` / mảng phẳng.
+         */
+        const paperPayload: any = (papersRes as any)?.data ?? papersRes;
+        const paperList: any[] = paperPayload?.PaperTypes ?? paperPayload?.paperTypes ?? [];
+        setPaperTypes(Array.isArray(paperList) ? paperList : []);
 
       } catch (error) {
         console.error("Failed to fetch reference data:", error);

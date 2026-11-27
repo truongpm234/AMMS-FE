@@ -353,13 +353,25 @@ export default function PurchaseManagement() {
 
 
 
-  // Lấy danh sách đơn hàng theo trạng thái
-  const getPurchaseOrdersByStatus = (status: "Ordered" | "Delivered") => {
-    if (poLoading || !poData) {
-      return [];
-    }
-    return poData.filter((po: any) => po.status === status);
+  /**
+   * BE không có khái niệm purchase order với state machine Ordered/Delivered.
+   * Trạng thái nằm trong 3 field của MissingMaterialDto:
+   *   - chưa xử lý  : is_buy != true && file_purpose == null
+   *   - đã tạo phiếu: is_buy == true || file_purpose != null
+   *   - đã nhập kho : bản ghi biến mất khỏi list sau recalculate
+   * poData (getList) cũng chính là danh sách vật tư thiếu, chỉ khác filter.
+   */
+  const getMissingByState = (state: "processed" | "unprocessed") => {
+    const rows: any[] = Array.isArray(poData) ? poData : [];
+    return rows.filter((m) =>
+      state === "processed"
+        ? m.is_buy === true || !!m.file_purpose
+        : !m.file_purpose && m.is_buy !== true
+    );
   };
+
+  const processedMaterials = getMissingByState("processed");
+  const unprocessedMaterials = getMissingByState("unprocessed");
 
   // Mở popup khảo giá
   const handleOpenQuotePopup = (pr: any, currentQuantity: number) => {
@@ -432,8 +444,9 @@ export default function PurchaseManagement() {
               }`}
           >
             <BsClock className="w-4 h-4" />
-            Chờ đặt hàng ({missing_materials.length})
+            Chưa xử lý ({missing_materials.length})
           </button>
+          {/* tab này là vật tư đã tạo phiếu PDF, không phải đang chờ giao */}
           <button
             onClick={() => setActiveTab("ordered")}
             className={`flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors ${activeTab === "ordered"
@@ -442,8 +455,10 @@ export default function PurchaseManagement() {
               }`}
           >
             <BsTruck className="w-4 h-4" />
-            Đang chờ giao ({getPurchaseOrdersByStatus("Ordered").length})
+            Đã tạo phiếu ({processedMaterials.length})
           </button>
+          {/* đã nhập kho không phải trạng thái đọc được, bản ghi biến mất
+              khỏi danh sách sau recalculate nên tab này chỉ là nhật ký tạm */}
           <button
             onClick={() => setActiveTab("received")}
             className={`flex items-center gap-2 px-6 py-3 font-medium border-b-2 transition-colors ${activeTab === "received"
@@ -452,7 +467,7 @@ export default function PurchaseManagement() {
               }`}
           >
             <BsCheckCircle className="w-4 h-4" />
-            Đã nhận hàng ({getPurchaseOrdersByStatus("Delivered").length})
+            Đã nhập kho (tự ẩn khỏi danh sách)
           </button>
         </div>
       </div>
@@ -483,7 +498,7 @@ export default function PurchaseManagement() {
                             if (e.target.checked) {
                               const allMaterials = displayMaterials.map((pr: any) => ({
                                 material_id: pr.material_id,
-                                ui_id: pr.ui_id,          // 🔥 BẮT BUỘC
+                                ui_id: pr.ui_id,
                                 quantity: Math.round(pr.quantity),
                                 price: 0,
                                 miss_id: pr.miss_id,
@@ -738,7 +753,7 @@ export default function PurchaseManagement() {
           </div>
         )}
 
-        {/* Tab 2: Đang chờ giao */}
+        {/* Tab 2: Đã tạo phiếu (is_buy / file_purpose) */}
         {activeTab === "ordered" && (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
             <div className="overflow-x-auto">
@@ -749,71 +764,63 @@ export default function PurchaseManagement() {
                       STT
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nhà cung cấp
+                      Vật tư
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày đặt
+                      Số lượng cần mua
                     </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Dự kiến giao
-                    </th> */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sản phẩm
+                      Thành tiền
                     </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th> */}
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Phiếu đề xuất
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {getPurchaseOrdersByStatus("Ordered").map(
-                    (orderGroup: any, index: number) => (
-                      <tr key={orderGroup.purchaseId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {orderGroup.code}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {orderGroup.supplierName}
-                          </div>
-                        </td>
-
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(orderGroup.createdAt).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </td>
-                        {/* <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(orderGroup.etaDate).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </td> */}
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          <ul className="list-disc list-inside">
-                            {orderGroup.items.map((item: any) => (
-                              <li key={item.id} className="truncate max-w-xs">
-                                {item.materialName} ({item.qtyOrdered}{" "}
-                                {item.unit})
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                        {/* <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
-                            Đang vận chuyển
-                          </span>
-                        </td> */}
-                      </tr>
-                    )
-                  )}
-                  {getPurchaseOrdersByStatus("Ordered").length === 0 && (
+                  {/*
+                   * BE_REQUESTS_ANSWER.md YC 11.2 — shape THẬT là `MissingMaterialDto`
+                   * (`material_name`, `quantity`, `unit`, `total_price`, `file_purpose`),
+                   * KHÔNG có `purchaseId/supplierName/qtyOrdered`.
+                   */}
+                  {processedMaterials.map((m: any, index: number) => (
+                    <tr key={m.miss_id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {index + 1}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">
+                          {m.material_name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {m.quantity} {m.unit}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {(m.total_price ?? 0).toLocaleString("vi-VN")} ₫
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {/* `file_purpose` là URL public Cloudinary, KHÔNG hết hạn */}
+                        {m.file_purpose ? (
+                          <a
+                            href={m.file_purpose}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:underline font-medium"
+                          >
+                            Xem phiếu PDF
+                          </a>
+                        ) : (
+                          <span className="text-gray-400">Chưa có file</span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {processedMaterials.length === 0 && (
                     <tr>
-                      <td
-                        colSpan={7}
-                        className="px-6 py-12 text-center text-gray-500"
-                      >
+                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500">
                         <BsTruck className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p>Không có đơn hàng nào đang chờ giao</p>
+                        <p>Chưa có vật tư nào được tạo phiếu đề xuất mua</p>
                       </td>
                     </tr>
                   )}
@@ -823,99 +830,24 @@ export default function PurchaseManagement() {
           </div>
         )}
 
-        {/* Tab 3: Đã nhận hàng */}
+        {/* BE không có trạng thái "đã nhập kho" để truy vấn, sau khi import
+            Excel + recalculate bản ghi biến mất khỏi missing_materials */}
         {activeTab === "received" && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      STT
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Nhà cung cấp
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày đặt
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Ngày nhận
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Người nhận
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Sản phẩm
-                    </th>
-                    {/* <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Trạng thái
-                    </th> */}
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {poData
-                    .filter((po: any) => po.status === "Delivered")
-                    .map((po: any, index: number) => (
-                      <tr key={po.purchaseId} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {index + 1}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm font-medium text-gray-900">
-                            {po.supplierName}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(
-                            po.createdAt
-                          ).toLocaleDateString("vi-VN")}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {new Date(po.receivedAt).toLocaleDateString(
-                            "vi-VN"
-                          )}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          Quản kho B
-                        </td>
-                        <td className="px-6 py-4 text-sm text-gray-500">
-                          <ul className="list-disc list-inside">
-                            {po.items.map((item: any) => (
-                              <li key={item.id} className="truncate max-w-xs">
-                                {item.materialName} ({item.qtyOrdered}{" "}
-                                {item.unit})
-                              </li>
-                            ))}
-                          </ul>
-                        </td>
-                        {/* <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 text-green-800">
-                            Đã nhập kho
-                          </span>
-                        </td> */}
-                      </tr>
-                    ))}
-                  {poData.filter((po: any) => po.status === "Delivered")
-                    .length === 0 && (
-                      <tr>
-                        <td
-                          colSpan={7}
-                          className="px-6 py-12 text-center text-gray-500"
-                        >
-                          <BsCheckCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                          <p>Chưa có đơn hàng nào đã nhận</p>
-                        </td>
-                      </tr>
-                    )}
-                </tbody>
-              </table>
-            </div>
+          <div className="bg-white rounded-lg border border-gray-200 p-10 text-center">
+            <BsCheckCircle className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+            <p className="text-gray-700 font-medium mb-2">
+              Không có danh sách &quot;đã nhập kho&quot; để hiển thị
+            </p>
+            <p className="text-sm text-gray-500 max-w-xl mx-auto">
+              Vật tư sau khi được nhập kho bằng file Excel sẽ{" "}
+              <strong>tự biến mất khỏi danh sách vật tư thiếu</strong> ở lần tính
+              lại kế tiếp (<code>POST /api/MissingMaterials/recalculate</code>).
+              Xem tồn kho thực tế tại trang Quản lý kho.
+            </p>
           </div>
         )}
       </div>
 
-      {/* Direct Purchase Order Modal */}
       {/* Direct Purchase Order Modal */}
       {showDirectPO && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
@@ -1011,7 +943,7 @@ export default function PurchaseManagement() {
                         return;
                       }
 
-                      // 🔥 FIND MATERIAL IN allMaterials
+                      // tìm material trong allMaterials
                       const material = allMaterials.find(
                         (m: any) => m.id?.toString() === directMaterialId || m.material_id?.toString() === directMaterialId
                       );
@@ -1027,7 +959,7 @@ export default function PurchaseManagement() {
                           supplier_id: Number(directSupplierId),
                           items: [
                             {
-                              material_id: materialIdNum, // ✅ ID số
+                              material_id: materialIdNum,
                               quantity,
                               price: 0,
                             },

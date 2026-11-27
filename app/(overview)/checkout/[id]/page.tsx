@@ -1,8 +1,17 @@
 "use client";
 
-import { paymentApi, PaymentResponse } from "@/apiRequests/payment";
+import {
+  paymentApi,
+  PaymentResponse,
+  getPayOsDepositErrorText,
+  getDepositBlockedText,
+  getInconsistentEstimateText,
+  formatVnDateTime,
+  type ActiveDepositInfo,
+} from "@/apiRequests/payment";
 import { requestOrderApi } from "@/apiRequests/request";
 import { estimatesApi, QuoteOption } from "@/apiRequests/estimates";
+import { getErrorMessage } from "@/lib/httpAxios";
 import { uploadApi } from "@/apiRequests/uploads";
 import DesignFileDisplay from "@/app/consultant/components/DesignFileDisplay";
 import {
@@ -28,6 +37,7 @@ import dayjs from "dayjs";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { QRCodeCanvas } from "qrcode.react";
 import { useEffect, useState } from "react";
+import envConfig from "@/lib/config";
 
 
 
@@ -49,6 +59,12 @@ export default function RequestDetailPage() {
   const [hasUploadedContract, setHasUploadedContract] = useState(false);
   const [hasConfirmedQuote, setHasConfirmedQuote] = useState(false);
   const [isPaid, setIsPaid] = useState(false);
+  /*
+   * YC-15/16 — pre-check cọc bằng `GET /api/Requests/{id}/active-deposit-info`.
+   * `null` = chưa tải xong (hoặc request không tồn tại / lỗi mạng).
+   * Chỉ dùng để CHẶN sớm + hiện lý do; BE vẫn là nguồn chân lý cuối cùng.
+   */
+  const [depositInfo, setDepositInfo] = useState<ActiveDepositInfo | null>(null);
 
 
   useEffect(() => {
@@ -63,6 +79,46 @@ export default function RequestDetailPage() {
     };
     fetchFullDetail();
   }, [requestId]);
+
+  /*
+   * Kiểm tra trước khi khách bấm thanh toán, tránh bấm rồi mới nhận 400.
+   * active-deposit-info dùng cùng luật với payos-deposit và trả sẵn estimate_id/quote_id.
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDepositInfo = async () => {
+      if (!requestId) return;
+      try {
+        const res = await paymentApi.getActiveDepositInfo(requestId);
+        const data = (res as any).data || res;
+        if (!cancelled) setDepositInfo((data as ActiveDepositInfo) ?? null);
+      } catch (error) {
+        // 404 = request không tồn tại; lỗi mạng... => không chặn khách,
+        // để bước gọi `payos-deposit` báo lỗi cụ thể.
+        console.error("Error fetching active deposit info:", error);
+        if (!cancelled) setDepositInfo(null);
+      }
+    };
+    fetchDepositInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
+
+  /** Lý do chặn thanh toán cọc, null = được phép bấm. */
+  const depositBlockReason = (() => {
+    if (!depositInfo) return null; // chưa tải xong, không chặn
+    if (depositInfo.active_estimate_count > 1) {
+      console.warn(
+        "[deposit] active_estimate_count > 1 — dữ liệu báo giá không nhất quán",
+        { request_id: requestId, count: depositInfo.active_estimate_count }
+      );
+      return getInconsistentEstimateText(requestId);
+    }
+    if (!depositInfo.can_deposit)
+      return getDepositBlockedText(depositInfo.reason, depositInfo.process_status);
+    return null;
+  })();
 
   useEffect(() => {
     const fetchQuotes = async () => {
@@ -109,13 +165,52 @@ export default function RequestDetailPage() {
     setLoadingQR(true);
     setPaymentInfo(null);
     try {
-      const res = await paymentApi.getPaymentQR(String(selectedQuote.order_request_id), selectedQuote.quote_id, selectedQuote.estimate_id);
+      // Gọi lại ngay trước payos-deposit: báo giá có thể hết hạn trong lúc khách chờ.
+      // estimate_id cũng lấy từ đây, không tự chọn từ selectedQuote.
+      let deposit: ActiveDepositInfo | null = null;
+      try {
+        const infoRes = await paymentApi.getActiveDepositInfo(
+          selectedQuote.order_request_id
+        );
+        deposit = ((infoRes as any).data || infoRes) as ActiveDepositInfo;
+      } catch {
+        // lỗi mạng/404 thì để payos-deposit báo lỗi cụ thể
+        deposit = null;
+      }
+
+      if (deposit && deposit.active_estimate_count > 1) {
+        console.warn(
+          "[deposit] active_estimate_count > 1 — dữ liệu báo giá không nhất quán",
+          { request_id: selectedQuote.order_request_id, count: deposit.active_estimate_count }
+        );
+        message.error(getInconsistentEstimateText(selectedQuote.order_request_id));
+        setIsPaymentModalVisible(false);
+        return;
+      }
+
+      if (deposit && !deposit.can_deposit) {
+        message.error(
+          getDepositBlockedText(deposit.reason, deposit.process_status)
+        );
+        setIsPaymentModalVisible(false);
+        return;
+      }
+
+      // getPaymentQR(request_id, estimate_id, quote_id?)
+      const estimateId = deposit?.estimate_id || selectedQuote.estimate_id;
+      const quoteId = deposit?.quote_id ?? selectedQuote.quote_id;
+
+      const res = await paymentApi.getPaymentQR(
+        selectedQuote.order_request_id,
+        estimateId,
+        quoteId
+      );
       const data = (res as any).data || res;
       if (data) {
         setPaymentInfo(data);
       }
     } catch (error) {
-      message.error("Lỗi khi lấy thông tin thanh toán");
+      message.error(getPayOsDepositErrorText(error));
       setIsPaymentModalVisible(false);
     } finally {
       setLoadingQR(false);
@@ -127,23 +222,18 @@ export default function RequestDetailPage() {
 
     const checkPaymentStatus = async () => {
       try {
-        const response = await paymentApi.getStatusPayment(requestId, selectedQuote.quote_id, selectedQuote.estimate_id);
+        // getStatusPayment(request_id, estimate_id, quote_id?)
+        const response = await paymentApi.getStatusPayment(
+          requestId,
+          selectedQuote.estimate_id,
+          selectedQuote.quote_id
+        );
         const data = (response as any).data || response;
 
-        if (data && data.status === 'PAID') {
-          try {
-            await fetch(
-              `https://mmes-sep490.onrender.com/api/Requests/notify-customer-pay?request_id=${requestId}`,
-              {
-                method: 'GET',
-              }
-            );
-
-            setIsPaid(true);
-            setIsPaymentModalVisible(false);
-          } catch (error) {
-            console.error('Call API notify failed:', error);
-          }
+        // Dùng paid/processed thay vì so sánh status raw.
+        if (data && (data.paid === true || data.processed === true)) {
+          setIsPaid(true);
+          setIsPaymentModalVisible(false);
         }
       } catch (error) {
         // console.error("Error checking payment status:", error);
@@ -179,7 +269,7 @@ export default function RequestDetailPage() {
 
   const ExpiryNote = () => (
     <p className="mt-6 text-sm text-slate-500 italic leading-relaxed border-t border-slate-200 pt-4">
-      (*) Báo giá có hiệu lực đến <b>{paymentInfo?.expired_at ? dayjs(paymentInfo.expired_at).format("HH:mm DD/MM/YYYY") : "..."}</b>. Sau thời gian này, mọi thông tin về đơn giá và chi phí có thể thay đổi.
+      (*) Báo giá có hiệu lực đến <b>{formatVnDateTime(paymentInfo?.expired_at)}</b>. Sau thời gian này, mọi thông tin về đơn giá và chi phí có thể thay đổi.
       Mọi thao tác thanh toán sau thời gian này đều sẽ không được ghi nhận, mọi thắc mắc vui lòng liên hệ lại với chúng tôi để được hỗ trợ.
     </p>
   );
@@ -303,13 +393,26 @@ export default function RequestDetailPage() {
             consultantNote={fullRequestDetail?.consultant_note}
             estimateFinishDate={estimate_finish_date}
             actions={
-              <Button
-                type="primary"
-                className="h-10 px-8 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 border-none shadow-md shadow-emerald-200 w-full sm:w-auto mt-2 sm:mt-0"
-                onClick={() => handlePayClick(quote)}
-              >
-                Đồng ý
-              </Button>
+              <div className="w-full sm:w-auto flex flex-col items-stretch sm:items-end gap-2">
+                <Button
+                  type="primary"
+                  disabled={!!depositBlockReason}
+                  className={`h-10 px-8 rounded-lg font-medium border-none shadow-md w-full sm:w-auto mt-2 sm:mt-0 ${
+                    depositBlockReason
+                      ? "bg-slate-300 text-slate-500"
+                      : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-200"
+                  }`}
+                  onClick={() => handlePayClick(quote)}
+                >
+                  Đồng ý
+                </Button>
+                {/* YC-15: `message` BE trả sẵn là tiếng Việt, hiển thị nguyên văn */}
+                {depositBlockReason && (
+                  <span className="text-xs text-rose-600 max-w-[280px] text-left sm:text-right">
+                    {depositBlockReason}
+                  </span>
+                )}
+              </div>
             }
           />
         ))}
@@ -452,7 +555,7 @@ export default function RequestDetailPage() {
                           setHasUploadedContract(true);
                           if (onSuccess) onSuccess("ok");
                         } catch (error: any) {
-                          const errorMsg = error.response?.data?.message || error.message || "Tải hợp đồng không thành công, vui lòng kiểm tra lại";
+                          const errorMsg = getErrorMessage(error, "Tải hợp đồng không thành công, vui lòng kiểm tra lại");
                           message.error(errorMsg);
                           if (onError) onError(error as any);
                         } finally {
@@ -543,7 +646,7 @@ export default function RequestDetailPage() {
               <div className="flex flex-col items-center gap-6 px-2">
                 <div className="p-4 bg-white border-2 border-slate-200 rounded-xl">
                   <QRCodeCanvas
-                    value={paymentInfo.qr_code}
+                    value={paymentInfo.qr_code ?? ""}
                     size={220}
                     level={"H"}
                     includeMargin={true}
@@ -565,7 +668,7 @@ export default function RequestDetailPage() {
                   </div>
                   <div className="flex justify-between items-center border-b border-slate-200 pb-2.5">
                     <span className="text-slate-500">Số tiền</span>
-                    <span className="font-bold text-emerald-600 text-base">{formatVND(paymentInfo.amount)}</span>
+                    <span className="font-bold text-emerald-600 text-base">{formatVND(paymentInfo.amount ?? 0)}</span>
                   </div>
                   <div className="flex justify-between items-center">
                     <span className="text-slate-500">Nội dung CK</span>
@@ -576,7 +679,7 @@ export default function RequestDetailPage() {
                 <div className="w-full">
                   <Button
                     type="primary"
-                    href={paymentInfo.check_out_url}
+                    href={paymentInfo.check_out_url ?? undefined}
                     target="_blank"
                     className="w-full bg-emerald-600 hover:bg-emerald-500 h-10 lg:h-12 rounded-xl font-semibold shadow-emerald-200 shadow-lg text-sm lg:text-base flex items-center justify-center p-0"
                     icon={<CreditCardOutlined />}

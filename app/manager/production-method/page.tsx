@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, Suspense } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/httpAxios";
 import { Table, Input, Tag, Modal, Spin, message, Radio, Select, Alert } from "antd";
 import {
   SearchOutlined,
@@ -132,7 +133,7 @@ function ProductionMethodContent() {
       refetch();
     },
     onError: (error: any) => {
-      const errorMsg = error?.response?.data?.message || error.message;
+      const errorMsg = getErrorMessage(error);
       if (errorMsg && errorMsg.includes("Số lượng bán thành phẩm đã đủ. Vui lòng chọn SUB thay vì BOTH")) {
         Modal.confirm({
           title: "Gợi ý chuyển phương thức",

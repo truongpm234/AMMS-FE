@@ -3,8 +3,9 @@
 import { useSearchParams, useRouter } from "next/navigation";
 import { useState, useEffect, Suspense } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import envConfig from "@/lib/config";
 
-const API_BASE = "https://mmes-sep490.onrender.com";
+const API_BASE = `${envConfig.NEXT_API_ENDPOINT}`;
 
 function ResetPasswordForm() {
   const params = useSearchParams();

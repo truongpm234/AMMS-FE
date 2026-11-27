@@ -374,6 +374,48 @@ export const productionsApi = {
     return http.post(`/api/Productions/upload-import-receive-file`, formData);
   },
 
+  /**
+   * GET /api/Productions/customer-contract/order/{orderId}
+   * Route nằm trong ProductionsController, thiếu tiền tố Productions sẽ 404.
+   */
   getContractByOrderId: (orderId: number) =>
-    http.get<CustomerContractItem>(`/api/customer-contract/order/${orderId}`),
+    http.get<CustomerContractItem>(`/api/Productions/customer-contract/order/${orderId}`),
+
+  /* ------------------------------------------------------------------
+   * Instruction.md mục 7.4 — CÁC ENDPOINT PRODUCTIONS CÒN THIẾU
+   * ------------------------------------------------------------------ */
+
+  /**
+   * POST /api/Productions/schedule — lập lịch sản xuất cho đơn.
+   * Order: Pending -> Scheduled.
+   */
+  schedule: (body: Record<string, unknown>) =>
+    http.post<any>(`/api/Productions/schedule`, body),
+
+  /** GET /api/Productions/get-all-process-type — 9 công đoạn (string[]). */
+  getAllProcessType: () =>
+    http.get<string[]>(`/api/Productions/get-all-process-type`),
+
+  /** GET /api/Productions/progress/{prodId} — tiến độ sản xuất. */
+  getProgress: (prodId: number | string) =>
+    http.get<any>(`/api/Productions/progress/${prodId}`),
+
+  /** GET /api/Productions/waste/{prodId} — báo cáo hao hụt. */
+  getWaste: (prodId: number | string) =>
+    http.get<any>(`/api/Productions/waste/${prodId}`),
+
+  /**
+   * PUT /api/Productions/competed/{orderId} — hoàn tất đơn.
+   * Typo "competed" (thiếu m) là đúng theo BE, đổi thành completed sẽ 404.
+   */
+  completeProduction: (orderId: number | string) =>
+    http.put<any>(`/api/Productions/competed/${orderId}`, {}),
+
+  /** GET /api/Productions/machine-schedule — MachineScheduleBoardDto */
+  getMachineSchedule: () =>
+    http.get<any>(`/api/Productions/machine-schedule`),
+
+  /** GET /api/Productions/by-task/{taskId} */
+  getByTask: (taskId: number | string) =>
+    http.get<any>(`/api/Productions/by-task/${taskId}`),
 };

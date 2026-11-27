@@ -226,11 +226,20 @@ interface MessageResponse {
 }
 
 export const estimatesApi = {
-    // POST /api/Estimates/paper - Calculate paper parameters
+    /*
+     * POST /api/Estimates/paper không tồn tại (BE trả 405).
+     * Thay thế: materialsApi.getAllPaperTypes() hoặc productTypesApi.getPaperStock(),
+     * join 2 nguồn theo Code <-> code nếu cần material_id.
+     * @deprecated hàm chỉ giữ để tham chiếu lịch sử.
+     */
     estimatePaper: (body: EstimatePaperRequest) =>
         http.post<EstimatePaperResponse>("/api/Estimates/paper", body),
 
-    // POST /api/Estimates/process-cost-breakdown - Get process cost breakdown
+    /*
+     * POST /api/Estimates/process-cost-breakdown không tồn tại và BE không có
+     * API thay thế tương ứng, phải xoá call site ở FE.
+     * @deprecated không có thay thế.
+     */
     processCostBreakdown: (body: EstimateCostRequest) =>
         http.post<ProcessCostBreakdownResponse>("/api/Estimates/process-cost-breakdown", body),
 
@@ -246,6 +255,12 @@ export const estimatesApi = {
     getDeposit: (requestId: number) =>
         http.get<DepositResponse>(`/api/Estimates/deposit/by-request/${requestId}`),
 
+    // GET /api/Estimates/remaining/by-request/{requestId} - Số tiền còn lại (BE mới)
+    getRemaining: (requestId: number) =>
+        http.get<{ remaining_amount?: number; amount?: number }>(
+            `/api/Estimates/remaining/by-request/${requestId}`
+        ),
+
     //GET /api/Estimates/base-config
     getBaseConfig: () => http.get<EstimationConfig>("/api/Estimates/base-config"),
 
@@ -253,7 +268,9 @@ export const estimatesApi = {
     costSave: (body: DetailedProductionEstimation) =>
         http.post<EstimationResponse>("/api/Estimates/cost-save", body),
 
-    getAllDeal: (requestId: number) => http.get<RequestQuotationList>(`/api/Estimates/all-deal-by-${requestId}`),
+    /** GET /api/Estimates/get-all-deal-by-{request_id} */
+    getAllDeal: (requestId: number) =>
+        http.get<RequestQuotationList>(`/api/Estimates/get-all-deal-by-${requestId}`),
 
     emailPreview: (requestId: number) => http.get<OrderRequestWithQuotes>(`/api/Estimates/email-preview/${requestId}`),
 

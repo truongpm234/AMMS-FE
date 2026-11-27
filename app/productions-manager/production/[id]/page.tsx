@@ -443,8 +443,8 @@ export default function ProductionDetailPage() {
     let conn: any;
     const events = [...PRODUCTION_MANAGER_SIGNALR_EVENTS];
     const handler = () => {
-      console.log("🔥 nhận event SignalR cập nhật UI");
-      // ✅ Refetch lại data
+      console.log("nhận event SignalR cập nhật UI");
+      // refetch lại data
       queryClient.invalidateQueries({
         queryKey: ["production-detail", id],
       });

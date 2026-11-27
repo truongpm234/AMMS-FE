@@ -408,19 +408,10 @@ export default function InventoryManagement() {
     }
   };
 
-  const handleReceive = async (poId: number) => {
-    try {
-      await purchasesApi.receiveInventory(poId, { status: "Delivered" });
-      showSuccessToast("Nhập kho thành công!");
-      refetchSupplierData();
-      refetchInvData();
-    } catch (error) {
-      console.error("Error receiving PO:", error);
-      showErrorToast("Có lỗi xảy ra khi nhận hàng");
-    } finally {
-      setIsRefetching(false);
-    }
-  };
+  // đã xoá handleReceive(poId): BE không có endpoint nhận hàng theo purchaseId
+  // và không có trạng thái Delivered. Nhập kho vật tư chỉ qua import Excel
+  // (POST /api/MissingMaterials/import-stock-from-excel), đã có ở trang
+  // general-manager/purchase.
 
   const handleEditInventory = (materialId: string) => {
     const inv = inventory.find((i: any) => i.material_id === materialId);

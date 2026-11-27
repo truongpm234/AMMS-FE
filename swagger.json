@@ -29,6 +29,76 @@
         }
       }
     },
+    "/api/AuditLogs": {
+      "get": {
+        "tags": [
+          "AuditLogs"
+        ],
+        "parameters": [
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "entity",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "entityId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/login": {
       "post": {
         "tags": [
@@ -477,6 +547,18 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/BaseConfigs/grouping": {
+      "get": {
+        "tags": [
+          "BaseConfigs"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -1585,6 +1667,49 @@
         }
       }
     },
+    "/api/MissingMaterials/generate-purchase-pdf": {
+      "post": {
+        "tags": [
+          "MissingMaterials"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateMissingMaterialPurchasePdfRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateMissingMaterialPurchasePdfRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateMissingMaterialPurchasePdfRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/MissingMaterials/recalculate": {
+      "post": {
+        "tags": [
+          "MissingMaterials"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Notification/get-noti-by-role-id": {
       "get": {
         "tags": [
@@ -1605,6 +1730,27 @@
             "schema": {
               "type": "integer",
               "format": "int32"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Notification/staff-get-noti": {
+      "get": {
+        "tags": [
+          "Notification"
+        ],
+        "parameters": [
+          {
+            "name": "role",
+            "in": "query",
+            "schema": {
+              "type": "string"
             }
           }
         ],
@@ -2156,6 +2302,83 @@
         }
       }
     },
+    "/api/Payments/paged": {
+      "get": {
+        "tags": [
+          "Payments"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32",
+              "default": 20
+            }
+          },
+          {
+            "name": "status",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "provider",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "paymentType",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "orderRequestId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Payments/receipt/{orderCode}": {
       "get": {
         "tags": [
@@ -2397,6 +2620,48 @@
             "application/*+json": {
               "schema": {
                 "$ref": "#/components/schemas/ScheduleRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Productions/confirm-schedule/{prodId}": {
+      "post": {
+        "tags": [
+          "Productions"
+        ],
+        "parameters": [
+          {
+            "name": "prodId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmProductionScheduleRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmProductionScheduleRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmProductionScheduleRequest"
               }
             }
           }
@@ -2836,6 +3101,87 @@
         }
       }
     },
+    "/api/Productions/generate-import-receive": {
+      "post": {
+        "tags": [
+          "Productions"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateImportReceiveRequest"
+              }
+            },
+            "text/json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateImportReceiveRequest"
+              }
+            },
+            "application/*+json": {
+              "schema": {
+                "$ref": "#/components/schemas/GenerateImportReceiveRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/GenerateImportReceiveUrlResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Productions/upload-import-receive-file": {
+      "post": {
+        "tags": [
+          "Productions"
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "required": [
+                  "file",
+                  "order_id"
+                ],
+                "type": "object",
+                "properties": {
+                  "order_id": {
+                    "type": "integer",
+                    "format": "int32"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              },
+              "encoding": {
+                "order_id": {
+                  "style": "form"
+                },
+                "file": {
+                  "style": "form"
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
     "/api/Productions/delivery/{orderId}": {
       "put": {
         "tags": [
@@ -2912,30 +3258,45 @@
         }
       }
     },
-    "/api/Productions/generate-import-receive": {
-      "post": {
+    "/api/Productions/by-task/{taskId}": {
+      "get": {
         "tags": [
           "Productions"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateImportReceiveRequest"
-              }
-            },
-            "text/json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateImportReceiveRequest"
-              }
-            },
-            "application/*+json": {
-              "schema": {
-                "$ref": "#/components/schemas/GenerateImportReceiveRequest"
-              }
+        "parameters": [
+          {
+            "name": "taskId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
             }
           }
-        },
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Productions/customer-contract/order/{orderId}": {
+      "get": {
+        "tags": [
+          "Productions"
+        ],
+        "parameters": [
+          {
+            "name": "orderId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -4400,6 +4761,82 @@
               "format": "int32",
               "default": 10
             }
+          },
+          {
+            "name": "materialId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "fromDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "userId",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          {
+            "name": "keyword",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/StockMoves/summary": {
+      "get": {
+        "tags": [
+          "StockMoves"
+        ],
+        "parameters": [
+          {
+            "name": "fromDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
+          },
+          {
+            "name": "toDate",
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "format": "date-time"
+            }
           }
         ],
         "responses": {
@@ -4827,17 +5264,55 @@
             "content": {
               "text/plain": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskQrResponse"
+                  "$ref": "#/components/schemas/CreateTaskQrCompactResponse"
                 }
               },
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskQrResponse"
+                  "$ref": "#/components/schemas/CreateTaskQrCompactResponse"
                 }
               },
               "text/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TaskQrResponse"
+                  "$ref": "#/components/schemas/CreateTaskQrCompactResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/Tasks/qr/decode": {
+      "post": {
+        "tags": [
+          "Tasks"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecodeTaskQrTokenRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecodeTaskQrTokenResponse"
+                }
+              },
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecodeTaskQrTokenResponse"
+                }
+              },
+              "text/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DecodeTaskQrTokenResponse"
                 }
               }
             }
@@ -4980,6 +5455,18 @@
             }
           }
         },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/api/Tasks/get-all-task": {
+      "get": {
+        "tags": [
+          "Tasks"
+        ],
         "responses": {
           "200": {
             "description": "OK"
@@ -5254,6 +5741,16 @@
           },
           "proposed_production_method": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "ConfirmProductionScheduleRequest": {
+        "type": "object",
+        "properties": {
+          "is_priority": {
+            "type": "boolean",
             "nullable": true
           }
         },
@@ -6110,9 +6607,8 @@
             },
             "nullable": true
           },
-          "planned_start_date": {
-            "type": "string",
-            "format": "date-time",
+          "is_priority": {
+            "type": "boolean",
             "nullable": true
           },
           "note": {
@@ -6371,6 +6867,107 @@
             "type": "number",
             "format": "double",
             "nullable": true
+          },
+          "material_signature": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "CreateTaskQrCompactResponse": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "link": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DecodeTaskQrTokenRequest": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "DecodeTaskQrTokenResponse": {
+        "type": "object",
+        "properties": {
+          "valid": {
+            "type": "boolean"
+          },
+          "token": {
+            "type": "string",
+            "nullable": true
+          },
+          "link": {
+            "type": "string",
+            "nullable": true
+          },
+          "task_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "task_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "prod_id": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "qty_good": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "exp_unix": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "use_manual_input": {
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "nullable": true
+          },
+          "report_image_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskMaterialUsageInputDto"
+            },
+            "nullable": true
+          },
+          "qr_reference_inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskReferenceUsageInputDto"
+            },
+            "nullable": true
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskOutputReportDto"
+            },
+            "nullable": true
+          },
+          "submitted_payload": {
+            "$ref": "#/components/schemas/TaskQrSubmittedPayloadDto"
           }
         },
         "additionalProperties": false
@@ -6454,6 +7051,9 @@
           },
           "planning": {
             "$ref": "#/components/schemas/PlanningConfig"
+          },
+          "grouping": {
+            "$ref": "#/components/schemas/GroupingConfig"
           },
           "deliveryPayment": {
             "$ref": "#/components/schemas/DeliveryPaymentConfig"
@@ -6546,6 +7146,125 @@
         },
         "additionalProperties": false
       },
+      "GenerateImportReceiveUrlFileItem": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "prod_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "prod_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "order_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "order_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "file_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "import_recieve_path": {
+            "type": "string",
+            "nullable": true
+          },
+          "import_file": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_productions_in_file": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenerateImportReceiveUrlResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "order_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "order_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "total_productions": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "generated_count": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "prod_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "nullable": true
+          },
+          "file_url": {
+            "type": "string",
+            "nullable": true
+          },
+          "import_recieve_path": {
+            "type": "string",
+            "nullable": true
+          },
+          "import_file": {
+            "type": "string",
+            "nullable": true
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/GenerateImportReceiveUrlFileItem"
+            },
+            "nullable": true
+          },
+          "message": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GenerateMissingMaterialPurchasePdfRequest": {
+        "type": "object",
+        "properties": {
+          "miss_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
       "GenerateSubProductImportReceiptsRequestDto": {
         "type": "object",
         "properties": {
@@ -6613,6 +7332,99 @@
         "properties": {
           "id_token": {
             "type": "string",
+            "nullable": true
+          }
+        },
+        "additionalProperties": false
+      },
+      "GroupingConfig": {
+        "type": "object",
+        "properties": {
+          "setup_minutes_phu": {
+            "type": "number",
+            "format": "double"
+          },
+          "setup_minutes_can": {
+            "type": "number",
+            "format": "double"
+          },
+          "setup_minutes_boi": {
+            "type": "number",
+            "format": "double"
+          },
+          "setup_minutes_default": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeover_minutes_phu": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeover_minutes_can": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeover_minutes_boi": {
+            "type": "number",
+            "format": "double"
+          },
+          "changeover_minutes_default": {
+            "type": "number",
+            "format": "double"
+          },
+          "max_orders_per_group_batch": {
+            "type": "integer",
+            "format": "int32"
+          }
+        },
+        "additionalProperties": false
+      },
+      "GroupingUpdateDto": {
+        "type": "object",
+        "properties": {
+          "setup_minutes_phu": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "setup_minutes_can": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "setup_minutes_boi": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "setup_minutes_default": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "changeover_minutes_phu": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "changeover_minutes_can": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "changeover_minutes_boi": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "changeover_minutes_default": {
+            "type": "number",
+            "format": "double",
+            "nullable": true
+          },
+          "max_orders_per_group_batch": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           }
         },
@@ -6924,12 +7736,48 @@
             "type": "integer",
             "format": "int32"
           },
+          "order_code": {
+            "type": "string",
+            "nullable": true
+          },
           "order_request_id": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "product_length_mm": {
             "type": "integer",
             "format": "int32",
             "nullable": true
           },
-          "order_code": {
+          "product_width_mm": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "product_height_mm": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "customer_signed_contract_path": {
+            "type": "string",
+            "nullable": true
+          },
+          "print_length_mm": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "print_width_mm": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "product_size_text": {
+            "type": "string",
+            "nullable": true
+          },
+          "print_size_text": {
             "type": "string",
             "nullable": true
           },
@@ -7655,6 +8503,10 @@
           },
           "is_production_ready": {
             "type": "boolean"
+          },
+          "customer_signed_contract_path": {
+            "type": "string",
+            "nullable": true
           },
           "has_enough_material": {
             "type": "boolean"
@@ -8630,6 +9482,10 @@
             "type": "integer",
             "format": "int32",
             "nullable": true
+          },
+          "is_priority": {
+            "type": "boolean",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -8824,13 +9680,12 @@
         },
         "additionalProperties": false
       },
-      "TaskConsumableMaterialDto": {
+      "TaskMaterialUsageInputDto": {
         "type": "object",
         "properties": {
           "material_id": {
             "type": "integer",
-            "format": "int32",
-            "nullable": true
+            "format": "int32"
           },
           "material_code": {
             "type": "string",
@@ -8844,84 +9699,144 @@
             "type": "string",
             "nullable": true
           },
-          "estimated_input_qty": {
+          "quantity_used": {
             "type": "number",
             "format": "double"
           },
-          "is_mapped": {
+          "quantity_left": {
+            "type": "number",
+            "format": "double"
+          },
+          "is_stock": {
             "type": "boolean"
           }
         },
         "additionalProperties": false
       },
-      "TaskQrResponse": {
+      "TaskOutputReportDto": {
+        "type": "object",
+        "properties": {
+          "output_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "output_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity_good": {
+            "type": "number",
+            "format": "double"
+          },
+          "quantity_bad": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskQrSubmittedPayloadDto": {
         "type": "object",
         "properties": {
           "task_id": {
             "type": "integer",
             "format": "int32"
           },
-          "token": {
-            "type": "string",
-            "nullable": true
-          },
-          "expires_at_unix": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "qty_good_used": {
+          "ttl_minutes": {
             "type": "integer",
             "format": "int32"
           },
-          "is_auto_filled": {
+          "qty_good": {
+            "type": "integer",
+            "format": "int32",
+            "nullable": true
+          },
+          "use_manual_input": {
             "type": "boolean"
           },
-          "min_allowed": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "max_allowed": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "suggested_qty": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "qty_unit": {
+          "reason": {
             "type": "string",
             "nullable": true
           },
-          "process_code": {
+          "report_image_url": {
             "type": "string",
             "nullable": true
           },
-          "process_name": {
-            "type": "string",
-            "nullable": true
-          },
-          "embedded_material_count": {
-            "type": "integer",
-            "format": "int32"
-          },
-          "consumable_materials": {
+          "image_urls": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TaskConsumableMaterialDto"
+              "type": "string"
+            },
+            "nullable": true
+          },
+          "materials": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskMaterialUsageInputDto"
             },
             "nullable": true
           },
           "reference_inputs": {
             "type": "array",
             "items": {
-              "$ref": "#/components/schemas/TaskReferenceInputDto"
+              "$ref": "#/components/schemas/TaskReferenceUsageInputDto"
             },
+            "nullable": true
+          },
+          "qr_reference_inputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskReferenceUsageInputDto"
+            },
+            "nullable": true
+          },
+          "outputs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskOutputReportDto"
+            },
+            "nullable": true
+          },
+          "sub_product_leftovers": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskSubProductLeftoverInputDto"
+            },
+            "nullable": true
+          },
+          "raw_json": {
+            "$ref": "#/components/schemas/TaskQrSubmittedRawJsonDto"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskQrSubmittedRawJsonDto": {
+        "type": "object",
+        "properties": {
+          "materials_json": {
+            "type": "string",
+            "nullable": true
+          },
+          "reference_inputs_json": {
+            "type": "string",
+            "nullable": true
+          },
+          "outputs_json": {
+            "type": "string",
+            "nullable": true
+          },
+          "sub_product_leftovers_json": {
+            "type": "string",
             "nullable": true
           }
         },
         "additionalProperties": false
       },
-      "TaskReferenceInputDto": {
+      "TaskReferenceUsageInputDto": {
         "type": "object",
         "properties": {
           "input_code": {
@@ -8936,9 +9851,39 @@
             "type": "string",
             "nullable": true
           },
-          "estimated_qty": {
+          "quantity_used": {
             "type": "number",
             "format": "double"
+          },
+          "quantity_left": {
+            "type": "number",
+            "format": "double"
+          }
+        },
+        "additionalProperties": false
+      },
+      "TaskSubProductLeftoverInputDto": {
+        "type": "object",
+        "properties": {
+          "process_code": {
+            "type": "string",
+            "nullable": true
+          },
+          "process_name": {
+            "type": "string",
+            "nullable": true
+          },
+          "unit": {
+            "type": "string",
+            "nullable": true
+          },
+          "quantity_left": {
+            "type": "number",
+            "format": "double"
+          },
+          "note": {
+            "type": "string",
+            "nullable": true
           }
         },
         "additionalProperties": false
@@ -9023,6 +9968,9 @@
           },
           "planning": {
             "$ref": "#/components/schemas/PlanningUpdateDto"
+          },
+          "grouping": {
+            "$ref": "#/components/schemas/GroupingUpdateDto"
           },
           "delivery_payment": {
             "$ref": "#/components/schemas/DeliveryPaymentUpdateDto"
@@ -9332,6 +10280,10 @@
           "unit_cost_to_stage": {
             "type": "number",
             "format": "double",
+            "nullable": true
+          },
+          "material_signature": {
+            "type": "string",
             "nullable": true
           }
         },
@@ -10883,9 +11835,18 @@
             "format": "date-time",
             "nullable": true
           },
+          "planned_end_date": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true
+          },
           "end_date": {
             "type": "string",
             "format": "date-time",
+            "nullable": true
+          },
+          "is_priority": {
+            "type": "boolean",
             "nullable": true
           },
           "status": {
@@ -11091,6 +12052,11 @@
           },
           "note": {
             "type": "string",
+            "nullable": true
+          },
+          "sub_product_id": {
+            "type": "integer",
+            "format": "int32",
             "nullable": true
           },
           "material": {

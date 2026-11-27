@@ -5,6 +5,7 @@ import { Avatar, Dropdown } from "antd";
 import { UserOutlined, SettingOutlined, LogoutOutlined } from "@ant-design/icons";
 import NotificationPanel from "@/components/notifications/NotificationPanel";
 import { useNotifications } from "@/hooks/useNotifications";
+import envConfig from "@/lib/config";
 
 interface RoleHeaderProps {
   userInfo?: {
@@ -19,8 +20,15 @@ interface RoleHeaderProps {
   theme?: "default" | "purple" | "blue" | "amber";
 }
 
-const HUB_URL = "https://mmes-sep490.onrender.com/hubs/realtime";
-//const HUB_URL = "https://localhost:7109/hubs/realtime";
+/*
+ * URL hub SignalR — KHÔNG hardcode nữa.
+ *
+ * TRƯỚC ĐÂY: const HUB_URL = "https://mmes-sep490.onrender.com/hubs/realtime"
+ * NAY     : ghép từ envConfig.NEXT_API_ENDPOINT (lib/config.ts).
+ *           => Đổi BE bằng cách đổi .env.local, không sửa code.
+ */
+const HUB_URL = `${envConfig.NEXT_API_ENDPOINT}/hubs/realtime`;
+
 export default function RoleHeader({
   userInfo,
   onLogout,

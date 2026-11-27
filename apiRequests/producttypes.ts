@@ -69,12 +69,37 @@ export const productTypesApi = {
   getAll: () =>
     http.get<ProductType[]>("/api/ProductTypes/Get-All-Product-Types"),
 
-  getById: (id: number) => http.get<ProductType>(`/api/ProductTypes/${id}`),
+  /**
+   * GET /api/ProductTypes/{id}/detail
+   * Swagger chỉ có /{id}/detail, gọi /api/ProductTypes/{id} sẽ 404.
+   */
+  getById: (id: number) =>
+    http.get<ProductType>(`/api/ProductTypes/${id}/detail`),
 
   // Lấy danh sách loại sản phẩm chung: KHAY, THE_MAU, KHAC, VO_HOP_GACH, HOP_MAU
   getAllTypeGeneral: () =>
     http.get<string[]>("/api/ProductTypes/get-all-type-general"),
 
+  /**
+   * GET /api/ProductTypes/get-all-form-type-of-hop-mau
+   * Instruction.md mục 7.9 — dùng THAY cho `/api/Materials/get-all-form-type`
+   * (endpoint cũ không tồn tại ở BE).
+   */
+  getFormTypesOfHopMau: () =>
+    http.get<string[]>("/api/ProductTypes/get-all-form-type-of-hop-mau"),
+
+  /** GET /api/ProductTypes/get-all-type-of-gach — danh mục loại gạch */
+  getAllTypeOfGach: () =>
+    http.get<string[]>("/api/ProductTypes/get-all-type-of-gach"),
+
   getProductTemplete: (id: number) =>
     http.get<ProductTemplateList>(`/api/ProductTemplates/by-product-type/${id}`),
+
+  /** GET /api/ProductTemplates/get-all-templates */
+  getAllTemplates: () =>
+    http.get<ProductTemplateList>("/api/ProductTemplates/get-all-templates"),
+
+  /** GET /api/ProductTemplates/get-paper-stock — tồn kho giấy */
+  getPaperStock: () =>
+    http.get<any[]>("/api/ProductTemplates/get-paper-stock"),
 };

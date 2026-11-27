@@ -32,6 +32,7 @@ import dayjs from 'dayjs'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
+import { getErrorMessage } from "@/lib/httpAxios";
 
 const { Title, Text } = Typography
 
@@ -61,7 +62,7 @@ export default function CustomerHistoryPage() {
   // --- BƯỚC 1: GỬI OTP ---
   const handleSendOtp = async () => {
     if (!phoneNumber) {
-      message.warning('Vui lòng nhập số điện thoại!')
+      message.warning('Vui lòng nhập email!')
       return
     }
 
@@ -70,16 +71,16 @@ export default function CustomerHistoryPage() {
       const response = await lookupsApi.sendOtp(phoneNumber)
 
       if (response.message.includes('OTP đã được gửi')) {
-        message.success('Mã OTP đã được gửi đến Số điện thoại của bạn!')
+        message.success('Mã OTP đã được gửi đến email của bạn!')
         setStep('otp')
       } else if (response.message.includes('Không tìm thấy')) {
-        message.error('Không tìm thấy Số điện thoại nào gắn với số điện thoại này.')
+        message.error('Không tìm thấy đơn hàng nào gắn với email này.')
       } else {
         message.info(response.message)
       }
     } catch (error: any) {
       console.error('Error sending OTP:', error)
-      const errorMsg = error?.response?.data?.message || 'Có lỗi xảy ra. Vui lòng thử lại.'
+      const errorMsg = getErrorMessage(error, 'Có lỗi xảy ra. Vui lòng thử lại.')
       message.error(errorMsg)
     } finally {
       setSendingOtp(false)
@@ -157,7 +158,7 @@ export default function CustomerHistoryPage() {
 
     } catch (error: any) {
       console.error('Error verifying OTP:', error)
-      const errorMsg = error?.response?.data?.message || 'OTP không hợp lệ hoặc đã hết hạn.'
+      const errorMsg = getErrorMessage(error, 'OTP không hợp lệ hoặc đã hết hạn.')
       message.error(errorMsg)
     } finally {
       setLoading(false)
@@ -475,21 +476,21 @@ export default function CustomerHistoryPage() {
           />
         </div> */}
 
-        {/* STEP 1: Nhập số điện thoại */}
+        {/* STEP 1: Nhập email */}
         {step === 'phone' && (
           <div className="flex justify-center">
             <Card className="w-full max-w-md shadow-lg">
               <div className="text-center mb-4">
                 <MobileOutlined className="text-4xl text-blue-500 mb-2" />
-                <Title level={4}>Nhập số điện thoại</Title>
+                <Title level={4}>Nhập email</Title>
                 <Text type="secondary">
-                  Chúng tôi sẽ gửi mã OTP đến số điện thoại này
+                  Chúng tôi sẽ gửi mã OTP đến email này
                 </Text>
               </div>
 
               <Input
                 size="large"
-                placeholder="Nhập số điện thoại (VD: 0912345678)"
+                placeholder="Nhập email (VD: ban@example.com)"
                 prefix={<MobileOutlined className="text-gray-400" />}
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
@@ -518,7 +519,7 @@ export default function CustomerHistoryPage() {
                 <MailOutlined className="text-4xl text-green-500 mb-2" />
                 <Title level={4}>Xác thực OTP</Title>
                 <Text type="secondary">
-                  Nhập mã OTP đã được gửi đến Số điện thoại của bạn
+                  Nhập mã OTP đã được gửi đến email của bạn
                 </Text>
                 <div className="mt-2">
                   <Tag color="blue">{phoneNumber}</Tag>
@@ -555,7 +556,7 @@ export default function CustomerHistoryPage() {
                   Gửi lại mã OTP
                 </Button>
                 <Button type="link" onClick={() => setStep('phone')}>
-                  Đổi số điện thoại
+                  Đổi email
                 </Button>
               </div>
             </Card>
@@ -579,7 +580,7 @@ export default function CustomerHistoryPage() {
                       </div>
                     )}
                     <div className="flex items-center gap-1.5">
-                      <Text type="secondary" className="text-sm">Số điện thoại:</Text>
+                      <Text type="secondary" className="text-sm">Email:</Text>
                       <Text strong className="tracking-wider">{maskPhoneNumber(phoneNumber)}</Text>
                     </div>
                   </div>

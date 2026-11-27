@@ -49,6 +49,7 @@ import {
 import dayjs from "dayjs";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { getErrorMessage } from "@/lib/httpAxios";
 
 const { Title, Text } = Typography;
 const { Panel } = Collapse;
@@ -355,7 +356,7 @@ export default function ConsultantRequestDetailPage() {
             fetchOrderDetail(false);
         } catch (error: any) {
             console.error("Lỗi khi Đưa vào sản xuất:", error);
-            message.error(error.response?.data?.message || "Không thể Đưa vào sản xuất. Vui lòng thử lại.");
+            message.error(getErrorMessage(error, "Không thể Đưa vào sản xuất. Vui lòng thử lại."));
         } finally {
             setConfirmingLayout(false);
         }
@@ -368,16 +369,17 @@ export default function ConsultantRequestDetailPage() {
         }
         setSendingResign(true);
         try {
-            await requestOrderApi.emailRequestResignContract({
+            // email-request-resign-contract không tồn tại ở BE, dùng endpoint này
+            await requestOrderApi.consultantMessageToCustomer({
                 request_id: Number(requestId),
-                custom_message: resignMessage
+                message: resignMessage,
             });
             message.success("Đã gửi yêu cầu ký lại hợp đồng cho khách hàng!");
             setIsResignModalOpen(false);
             setResignMessage("");
         } catch (error: any) {
             console.error("Lỗi khi gửi yêu cầu ký lại:", error);
-            message.error(error.response?.data?.message || "Không thể gửi yêu cầu. Vui lòng thử lại.");
+            message.error(getErrorMessage(error, "Không thể gửi yêu cầu. Vui lòng thử lại."));
         } finally {
             setSendingResign(false);
         }
@@ -443,7 +445,7 @@ export default function ConsultantRequestDetailPage() {
             }
         } catch (error: any) {
             console.error("Lỗi khi tạo hợp đồng:", error);
-            message.error(error.response?.data?.message || "Không thể tạo hợp đồng tự động");
+            message.error(getErrorMessage(error, "Không thể tạo hợp đồng tự động"));
         } finally {
             setGeneratingContract(null);
             setIsAutoGenerating(false);

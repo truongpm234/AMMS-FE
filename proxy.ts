@@ -1,47 +1,27 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { decodeJwt } from 'jose'
+import {
+  isManagementPath,
+  isPublicPath,
+  normalizeRoleId,
+  requiredRoleForPath,
+  ROLE_DASHBOARDS,
+} from '@/lib/roles'
 
-const PUBLIC_ROUTES = [
-  '/',
-  '/login',
-  '/register',
-  '/management-login',
-  '/about',
-  '/products',
-  '/look-up',
-  '/checkout',
-  '/order',
-  '/order-detail',
-  '/request-detail',
-  '/reject-deal',
-  '/payment',
-  '/customer-receive'
-]
-
-const MANAGEMENT_ROUTES = [
-  '/admin',
-  '/manager',
-  '/consultant',
-  '/staff',
-  '/warehouse',
-  '/productions-manager',
-  '/inventory',
-  '/general-manager',
-  '/materials-manager',
-  '/designer'
-]
-
-const ROLE_DASHBOARDS: Record<number, string> = {
-  1: '/admin',
-  2: '/consultant',
-  3: '/manager',
-  4: '/warehouse',
-  5: '/customer/profile',
-  6: '/productions-manager',
-  7: '/staff',
-  18: '/general-manager'
-}
+/*
+ * proxy.ts — Middleware của Next.js 16 (thay cho `middleware.ts`).
+ *
+ * NHIỆM VỤ:
+ *   1. Chưa có token -> chặn khỏi route nội bộ, đẩy về /login hoặc /management-login.
+ *   2. Có token     -> đã login thì không cho vào lại /login, /register, /management-login.
+ *   3. Có token     -> kiểm tra RBAC theo ROUTE_ROLE_GUARDS (lib/roles.ts).
+ *   4. Token lỗi/hết hạn -> xoá cookie + redirect về trang login tương ứng.
+ *
+ * NGUỒN SỰ THẬT VỀ ROLE:
+ *   Toàn bộ mapping role -> dashboard và role -> route nằm ở `lib/roles.ts`.
+ *   File này KHÔNG định nghĩa lại danh sách role/route nữa.
+ */
 
 export function proxy(request: NextRequest) {
   const token = request.cookies.get('token')?.value
@@ -55,15 +35,9 @@ export function proxy(request: NextRequest) {
     pathname.includes('.') ||
     pathname === '/favicon.ico'
 
-  const isPublicRoute = PUBLIC_ROUTES.some(route =>
-    route === '/' ? pathname === '/' : pathname.startsWith(route)
-  )
-
-  const isManagementRoute = MANAGEMENT_ROUTES.some(route =>
-    pathname.startsWith(route)
-  )
-
-  const isManagementContext = isManagementRoute
+  // Danh sách route public + khu vực quản trị lấy từ lib/roles.ts
+  const isPublicRoute = isPublicPath(pathname)
+  const isManagementContext = isManagementPath(pathname)
 
   /* =========================
      1. NO TOKEN
@@ -86,8 +60,9 @@ export function proxy(request: NextRequest) {
      ========================= */
   try {
     const payload = decodeJwt(token) as any
-    const rolePayload = payload.role_id || payload.roleid || payload.role
-    const roleId = Number(rolePayload)
+    const roleId = normalizeRoleId(
+      payload.role_id || payload.roleid || payload.role
+    )
 
     /* =========================
        Đã login → không cho vào login page
@@ -104,40 +79,18 @@ export function proxy(request: NextRequest) {
     }
 
     /* =========================
-       RBAC
+       RBAC — luật chặn lấy từ ROUTE_ROLE_GUARDS (lib/roles.ts)
        ========================= */
-    if (pathname.startsWith('/admin') && roleId !== 1) {
+    const requiredRole = requiredRoleForPath(pathname)
+    if (requiredRole !== null && roleId !== requiredRole) {
       return NextResponse.redirect(new URL('/403', request.url))
     }
-    if (pathname.startsWith('/consultant') && roleId !== 2) {
-      return NextResponse.redirect(new URL('/403', request.url))
-    }
-    if (pathname.startsWith('/manager') && roleId !== 3) {
-      return NextResponse.redirect(new URL('/403', request.url))
-    }
-    if (pathname.startsWith('/warehouse') && roleId !== 4) {
-      return NextResponse.redirect(new URL('/403', request.url))
-    }
-    if (pathname.startsWith('/staff') && roleId !== 7) {
-      return NextResponse.redirect(new URL('/403', request.url))
-    }
-    if (pathname.startsWith('/productions-manager') && roleId !== 6) {
-      return NextResponse.redirect(new URL('/403', request.url))
-    }
-    if (pathname.startsWith('/general-manager') && roleId !== 18) {
-      return NextResponse.redirect(new URL('/403', request.url))
-    }
-
 
     return NextResponse.next()
   } catch (err) {
     /* =========================
        TOKEN LỖI / EXPIRED
        ========================= */
-    const isManagementContext = MANAGEMENT_ROUTES.some(route =>
-      pathname.startsWith(route)
-    )
-
     // Tránh infinite redirect loop nếu đang ở trang login/register
     if (
       pathname.startsWith('/login') ||

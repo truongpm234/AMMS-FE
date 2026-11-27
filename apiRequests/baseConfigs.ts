@@ -300,4 +300,28 @@ export const baseConfigApi = {
 
   updateConfigs: (data: BaseConfigResponse) =>
     http.put<{ message: string; note: string }>("/api/BaseConfigs", toUpdateRequest(data)),
+
+  /*
+   * Instruction.md mục 7.5 / 7.11 / 11 — CONFIG GHÉP NHÓM (chỉ admin)
+   * ---------------------------------------------------------------------------
+   * GET /api/BaseConfigs/grouping  -> GroupingConfig
+   *
+   * | Key                            | Mặc định | Nghĩa                          |
+   * |--------------------------------|----------|--------------------------------|
+   * | setup_minutes_phu              | 25       | phút setup công đoạn Phủ       |
+   * | setup_minutes_can              | 30       | phút setup Cán                 |
+   * | setup_minutes_boi              | 20       | phút setup Bồi                 |
+   * | setup_minutes_default          | 15       | setup các công đoạn khác       |
+   * | changeover_minutes_phu/can/... | 35/40/30/25 | phút đổi vật tư giữa 2 đơn   |
+   * | max_orders_per_group_batch     | 5        | số đơn tối đa/batch (clamp 2..50) |
+   */
+  getGrouping: () => http.get<Record<string, number>>("/api/BaseConfigs/grouping"),
+
+  /**
+   * PUT /api/BaseConfigs — cập nhật riêng config ghép nhóm.
+   * Body phải bọc trong { "grouping": {...} }, không gửi phẳng.
+   * Chỉ field gửi lên mới đổi.
+   */
+  updateGrouping: (grouping: Record<string, number>) =>
+    http.put<{ message: string; note: string }>("/api/BaseConfigs", { grouping }),
 };

@@ -487,7 +487,7 @@ export default function PurchaseManagement() {
                             if (e.target.checked) {
                               const allMaterials = displayMaterials.map((pr: any) => ({
                                 material_id: pr.material_id,
-                                ui_id: pr.ui_id,          // 🔥 BẮT BUỘC
+                                ui_id: pr.ui_id,
                                 quantity: Math.round(pr.quantity),
                                 price: 0,
                               }));
@@ -1271,7 +1271,7 @@ export default function PurchaseManagement() {
                         return;
                       }
 
-                      // 🔥 MAP CODE -> ID
+                      // map code -> id
                       const material = materials.find(
                         (m) => m.id === directMaterialId
                       );
@@ -1286,7 +1286,7 @@ export default function PurchaseManagement() {
                           supplier_id: Number(directSupplierId),
                           items: [
                             {
-                              material_id: materialIdNum, // ✅ ID số
+                              material_id: materialIdNum,
                               quantity,
                               price: 0,
                             },

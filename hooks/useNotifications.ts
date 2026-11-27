@@ -51,13 +51,14 @@ function extractRequestId(message: string): number | undefined {
    ================================================================ */
 
 /**
- * Danh sách tất cả method name mà backend SendAsync() có thể gọi.
- * Backend route đúng role qua ByRole() → frontend nhận được = hiển thị luôn.
+ * Tất cả method name mà backend SendAsync() có thể gọi.
+ * Chỉ giữ tên chuẩn (kebab-case/lower-case), subscribe cả tên cũ sẽ xử lý
+ * 1 notification 2 lần.
  *
  * Khi BE thêm method mới cho role nào, thêm tên method vào đây.
  */
 export const SIGNALR_NOTIFICATION_METHODS: string[] = [
-  "consultantCreateRequest",
+  "consultant-create-request", // YC-18 (cũ: consultantCreateRequest)
   "pending",
   "clone-request",
   "verified",
@@ -67,8 +68,8 @@ export const SIGNALR_NOTIFICATION_METHODS: string[] = [
   "waiting",
   "rejected",
   "processing",
-  "paid",
-  "importing",
+  "paid", // YC-18: tên chuẩn, dùng CHUNG cho cả cọc & phần còn lại
+  "importing", // YC-18 (cũ: Importing)
   "confirm-layout",
   "approved-production",
   "approve-production",
@@ -76,9 +77,7 @@ export const SIGNALR_NOTIFICATION_METHODS: string[] = [
   "pending-paid",
   "PendingPaid",
   "remaining-paid",
-  "Paid",
   "finishedProduction",
-  "Importing",
   "production-ready-cancelled",
   "production-method-approved",
   "group-production",
@@ -122,9 +121,21 @@ export async function getHubConnection(
   if (_connectionPromise) return _connectionPromise;
 
   _connectionPromise = (async () => {
+    /*
+     * Instruction.md mục 9 — JWT phải nằm trong QUERY STRING:
+     *   `${API}/hubs/realtime?access_token=${token}`
+     * Trước đây dùng `accessTokenFactory` (gửi qua header) => handshake có
+     * thể 401 vì BE đọc token từ query cho riêng SignalR.
+     */
+    const token =
+      accessToken ||
+      (typeof window !== "undefined" ? localStorage.getItem("token") || "" : "");
+    const finalUrl = token
+      ? `${hubUrl}${hubUrl.includes("?") ? "&" : "?"}access_token=${token}`
+      : hubUrl;
+
     const conn = new signalR.HubConnectionBuilder()
-      .withUrl(hubUrl, {
-        accessTokenFactory: accessToken ? () => accessToken : undefined,
+      .withUrl(finalUrl, {
         skipNegotiation: false,
         transport: signalR.HttpTransportType.WebSockets,
       })
@@ -187,19 +198,23 @@ const SUPPORTED_ROLES = [
  */
 
 
-export const STATUS_LABELS: Record<string, string> = {
-  Pending:     "Chờ xử lý",
-  Processing:  "Đang xử lý",
-  Completed:   "Hoàn thành",
-  Cancelled:   "Đã hủy",
-  Approved:    "Đã duyệt",
-  Rejected:    "Từ chối",
-  Verified:    "Đã xác nhận",
-  Declined:    "Đã từ chối",
-  Accepted:    "Đã chấp nhận",
-  Deposited:   "Đã đặt cọc",
-  "Full Paid": "Đã thanh toán đủ",
-};
+/*
+ * STATUS_LABELS — đã chuyển sang `lib/statuses.ts` (nguồn sự thật duy nhất).
+ * Bảng cũ ở đây THIẾU `Cancel` (BE dùng cả Cancel và Cancelled — Instruction.md
+ * mục 4.1) và thiếu nhiều status luồng sản xuất. Re-export để code cũ không vỡ.
+ */
+export { getStatusLabel, getStatusColor } from "@/lib/statuses";
+
+import { getStatusLabel as _label } from "@/lib/statuses";
+
+export const STATUS_LABELS: Record<string, string> = new Proxy(
+  {},
+  {
+    get: (_t, prop: string) => _label(prop),
+    has: () => true,
+  }
+) as Record<string, string>;
+
 
 /* ================================================================
    7. NOTIFICATION BUILDER
@@ -426,5 +441,11 @@ const ROLE_HUB_MAP: Record<string, string> = {
 
 async function joinGroups(conn: signalR.HubConnection, role: string) {
   const hubRole = ROLE_HUB_MAP[role.toLowerCase()] ?? role.toLowerCase();
-  await conn.invoke("JoinByRole", hubRole).catch(console.error);
+  // Tên method là JoinByRole (RealtimeHub.cs), không phải JoinRole.
+  // BE không tự map user vào group khi connect nên bắt buộc phải gọi.
+  // role là chuỗi tự do, không phải role_id số: "consultant", "manager",
+  // "warehouse", "production manager", "admin".
+  await conn.invoke("JoinByRole", hubRole).catch((err) =>
+    console.error("[SignalR] JoinByRole failed:", hubRole, err)
+  );
 }

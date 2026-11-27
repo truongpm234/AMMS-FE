@@ -9,6 +9,8 @@ import {
   LoginBodyAlternativeType,
 } from "@/schemaValidations/auth.schema";
 import { useAuth } from "@/lib/auth-context";
+import { ROLE, ROLE_LOGIN_REDIRECTS } from "@/lib/roles";
+import { GOOGLE_CLIENT_ID, GOOGLE_GSI_SCRIPT_SRC, isGoogleLoginConfigured } from "@/lib/googleAuth";
 import authApiRequest from "@/apiRequests/auth";
 import { setCookie } from "cookies-next";
 import Image from "next/image";
@@ -120,42 +122,26 @@ export default function LoginPage() {
         full_name,
       });
 
-      // Redirect theo role
-      switch (role_id) {
-        case 1:
-          router.replace("/admin");
-          break;
-        case 2:
-          router.replace("/consultant/requests");
-          break;
-        case 3:
-          router.replace("/manager");
-          break;
-        case 4:
-          router.replace("/warehouse");
-          break;
-        case 5:
-          const mockCustomer: Customer = {
-            id: `CUST-${user_id}`,
-            phone: (loginMethod === "username" ? data.username : "0123456789") || "0123456789",
-            name: (full_name as string) || "Customer",
-            email: (loginMethod === "email" ? data.email : "") || "",
-            createdAt: new Date().toISOString(),
-            addresses: []
-          };
-          customerLogin(mockCustomer);
-          router.replace("/");
-          break;
-        case 6:
-          router.replace("/productions-manager");
-          break;
-        case 18:
-          router.replace("/general-manager");
-          break;
-        default:
-          router.replace("/");
-          break;
+      /*
+       * Redirect theo role.
+       * TRƯỚC ĐÂY: switch/case 1,2,3,4,5,6,18 hardcode trong trang này
+       * (và lặp lại y hệt ở management-login + proxy.ts).
+       * NAY: dùng ROLE + ROLE_LOGIN_REDIRECTS từ lib/roles.ts
+       * (nguồn sự thật duy nhất — đổi role chỉ sửa 1 file).
+       */
+      if (role_id === ROLE.CUSTOMER) {
+        const mockCustomer: Customer = {
+          id: `CUST-${user_id}`,
+          phone: (loginMethod === "username" ? data.username : "0123456789") || "0123456789",
+          name: (full_name as string) || "Customer",
+          email: (loginMethod === "email" ? data.email : "") || "",
+          createdAt: new Date().toISOString(),
+          addresses: []
+        };
+        customerLogin(mockCustomer);
       }
+
+      router.replace(ROLE_LOGIN_REDIRECTS[role_id] ?? "/");
     } catch (err: any) {
       console.error("Login error:", err);
       setIsLoading(false);
@@ -173,15 +159,33 @@ export default function LoginPage() {
       // Xử lý lỗi từ server
       else if (err.response) {
         const serverError = err.response.data;
-        errorMessage =
-          serverError?.message ||
-          serverError?.error ||
-          `Lỗi server: ${err.response.status}`;
+        const status = err.response.status;
 
-        // Nếu là lỗi 401 (Unauthorized)
-        if (err.response.status === 401) {
+        /*
+         * BE.md mục 3.2 — lỗi nay là ProblemDetails (RFC 7807):
+         *   { status, title, detail, error_code, trace_id }
+         * => đọc `detail` (hoặc `title`) thay vì `message`.
+         * `HttpError` do lib/httpAxios dựng đã có sẵn message đọc được,
+         * nên ưu tiên err.message trước.
+         */
+        if (status === 401) {
           errorMessage =
-            serverError?.message || "Tài khoản hoặc mật khẩu không chính xác";
+            serverError?.detail ||
+            serverError?.message ||
+            "Tài khoản hoặc mật khẩu không chính xác";
+        } else if (status === 429) {
+          // Rate limit: auth 20 lần / 5 phút / IP (BE.md mục 2.4)
+          errorMessage =
+            serverError?.detail ||
+            serverError?.title ||
+            "Bạn đã thử quá nhiều lần. Vui lòng thử lại sau ít phút.";
+        } else {
+          errorMessage =
+            serverError?.detail ||
+            serverError?.message ||
+            serverError?.title ||
+            err.message ||
+            `Lỗi server: ${status}`;
         }
       }
 
@@ -197,7 +201,7 @@ export default function LoginPage() {
     if (document.getElementById("google-gsi")) return;
 
     const script = document.createElement("script");
-    script.src = "https://accounts.google.com/gsi/client";
+    script.src = GOOGLE_GSI_SCRIPT_SRC;
     script.async = true;
     script.defer = true;
     script.id = "google-gsi";
@@ -236,35 +240,20 @@ export default function LoginPage() {
         full_name: decoded.name,
       });
 
-      //Redirect giống login thường
-      switch (role_id) {
-        case 1:
-          router.replace("/admin");
-          break;
-        case 2:
-          router.replace("/consultant/requests");
-          break;
-        case 3:
-          router.replace("/manager");
-          break;
-        case 4:
-          router.replace("/warehouse");
-          break;
-        case 5:
-          const googleMockCustomer: Customer = {
-            id: `CUST-${role_id}`,
-            phone: "0123456789",
-            name: decoded.name || "Customer",
-            email: decoded.email || "",
-            createdAt: new Date().toISOString(),
-            addresses: []
-          };
-          customerLogin(googleMockCustomer);
-          router.replace("/");
-          break;
-        default:
-          router.replace("/");
+      // Redirect giống login thường — dùng mapping tập trung lib/roles.ts
+      if (role_id === ROLE.CUSTOMER) {
+        const googleMockCustomer: Customer = {
+          id: `CUST-${role_id}`,
+          phone: "0123456789",
+          name: decoded.name || "Customer",
+          email: decoded.email || "",
+          createdAt: new Date().toISOString(),
+          addresses: []
+        };
+        customerLogin(googleMockCustomer);
       }
+
+      router.replace(ROLE_LOGIN_REDIRECTS[role_id] ?? "/");
     } catch (err) {
       console.error("Google login error:", err);
       setError("Đăng nhập Google thất bại");
@@ -277,9 +266,18 @@ export default function LoginPage() {
   const handleGoogleLogin = () => {
     if (!window.google) return;
 
+    /*
+     * Client ID KHÔNG còn hardcode — đọc từ NEXT_PUBLIC_GOOGLE_CLIENT_ID
+     * (lib/googleAuth.ts). Nếu chưa khai báo thì không gọi GIS để tránh
+     * lỗi "The given origin is not allowed...".
+     */
+    if (!isGoogleLoginConfigured()) {
+      setError("Đăng nhập Google chưa được cấu hình.");
+      return;
+    }
+
     window.google.accounts.id.initialize({
-      client_id:
-        "222419838594-dicvpm40bukb6e5mdk2chtrhfbigg8eo.apps.googleusercontent.com",
+      client_id: GOOGLE_CLIENT_ID,
       callback: handleCredentialResponse,
       use_fedcm: false,
       auto_select: false,

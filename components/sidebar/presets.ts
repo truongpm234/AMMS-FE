@@ -10,6 +10,8 @@ import {
   FiDollarSign,
   FiUser,
   FiCalendar,
+  FiFileText,
+  FiCreditCard,
 } from "react-icons/fi";
 import { LuLayoutDashboard } from "react-icons/lu";
 import { FaSuitcase, FaUserPlus, FaWarehouse } from "react-icons/fa";
@@ -100,6 +102,30 @@ export const adminNavItems: NavItem[] = [
     icon: FiCalendar,
     basePath: "/admin",
   },
+  /*
+   * Instruction.md mục 7.10 / 7.11 — tính năng BE mới (chỉ admin):
+   *   /api/AuditLogs       — nhật ký thao tác (auto-ghi mọi POST/PUT/DELETE)
+   *   /api/Payments/paged  — danh sách thanh toán
+   *   /api/StockMoves/*    — lịch sử nhập/xuất kho
+   */
+  {
+    path: "/audit-logs",
+    label: "Nhật ký hệ thống",
+    icon: FiFileText,
+    basePath: "/admin",
+  },
+  {
+    path: "/payments",
+    label: "Thanh toán",
+    icon: FiCreditCard,
+    basePath: "/admin",
+  },
+  {
+    path: "/grouping-config",
+    label: "Cấu hình ghép nhóm",
+    icon: FiSettings,
+    basePath: "/admin",
+  },
   {
     path: "/",
     label: "Đăng xuất",
@@ -187,6 +213,13 @@ export const warehouseNavItems: NavItem[] = [
     path: "/stock",
     label: "Tồn kho NVL",
     icon: FiPackage,
+    basePath: "/warehouse",
+  },
+  {
+    // Instruction.md mục 7.8 — GET /api/StockMoves/paged (lịch sử IN/OUT/RETURN)
+    path: "/stock-moves",
+    label: "Lịch sử nhập / xuất",
+    icon: FiList,
     basePath: "/warehouse",
   },
   {

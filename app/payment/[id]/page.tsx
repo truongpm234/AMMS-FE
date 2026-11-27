@@ -1,50 +1,56 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 'use client'
 
-import React, { useEffect, useState, useRef, useCallback } from 'react'
+import React, { Suspense, useEffect, useState, useRef, useCallback } from 'react'
 import QRCode from 'qrcode'
-import { useParams, useRouter } from 'next/navigation'
+import { useParams, useRouter, useSearchParams } from 'next/navigation'
+import envConfig from "@/lib/config";
+import type { RemainingPayOsStatus, PayOsDeposit } from "@/apiRequests/payment";
 //Đã npm run build
 
 
 const POLLING_INTERVAL = 3000
+/**
+ * GET /api/Orders/payos/remaining-status-by-order-id?order_id=
+ * Type lấy từ apiRequests/payment, không khai lại ở đây.
+ * @deprecated alias nội bộ, code mới dùng RemainingPayOsStatus.
+ */
+type PaymentStatus = RemainingPayOsStatus
 
-type PaymentStatus = {
-  found: boolean
-  paid: boolean
-  processed: boolean
-  status: string
-  order_code: number
-  checkout_url: string
-  qr_code: string
-  should_call_return: boolean
-  should_redirect_frontend: boolean
-  message: string
-}
+/** `GET /api/Orders/create-payos-remaining-link/{orderId}` — link phần còn lại */
+type PaymentInitData = PayOsDeposit
 
-type PaymentInitData = {
-  expired_at: string | null
-  check_out_url: string
-  qr_code: string
-  account_number: string
-  account_name: string
-  amount: number
-  status: string
-  description: string
-  bin: string
-  payment_link_id: string
-  transaction_id: string | null
-  order_code: number
-}
-
-type Stage = 'loading' | 'pending' | 'paid' | 'error'
+type Stage = 'loading' | 'pending' | 'paid' | 'error' | 'cancelled'
 
 export default function Payment() {
+  // useSearchParams bắt buộc bọc Suspense trong App Router, không thì lỗi build
+  return (
+    <Suspense
+      fallback={
+        <div className="page">
+          <div className="loading-wrap">
+            <div className="spinner" />
+            <p className="loading-text">Đang tải thông tin thanh toán…</p>
+          </div>
+        </div>
+      }
+    >
+      <PaymentContent />
+    </Suspense>
+  )
+}
+
+function PaymentContent() {
   const [initData, setInitData] = useState<PaymentInitData | null>(null)
   const params = useParams();
   const ORDER_ID = params.id;
   const router = useRouter()
-  const [stage, setStage] = useState<Stage>('loading')
+  const searchParams = useSearchParams()
+  // payos/cancel redirect về đây khi khách huỷ thanh toán phần còn lại.
+  // Khởi tạo từ query ngay để không chạy create-payos-remaining-link rồi mới biết đã huỷ.
+  const [stage, setStage] = useState<Stage>(
+    searchParams.get('status') === 'cancel' ? 'cancelled' : 'loading'
+  )
   const [paymentData, setPaymentData] = useState<PaymentStatus | null>(null)
   const [qrDataUrl, setQrDataUrl] = useState<string>('')
   const [errorMsg, setErrorMsg] = useState<string>('')
@@ -53,12 +59,17 @@ export default function Payment() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const elapsedRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const dotsRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  // chặn gọi return_api_url nhiều lần, should_call_return có thể còn true ở lần poll sau
+  const hasCalledReturn = useRef(false)
 
-  const stopPolling = () => {
+  const stopPolling = useCallback(() => {
     if (pollingRef.current) clearInterval(pollingRef.current)
     if (elapsedRef.current) clearInterval(elapsedRef.current)
     if (dotsRef.current) clearInterval(dotsRef.current)
-  }
+    pollingRef.current = null
+    elapsedRef.current = null
+    dotsRef.current = null
+  }, [])
 
   const generateQR = useCallback(async (qrString: string) => {
     try {
@@ -77,25 +88,34 @@ export default function Payment() {
   const checkStatus = useCallback(async () => {
     try {
       const res = await fetch(
-        `https://mmes-sep490.onrender.com/api/Orders/payos/remaining-status-by-order-id?order_id=${ORDER_ID}`
+        `${envConfig.NEXT_API_ENDPOINT}/api/Orders/payos/remaining-status-by-order-id?order_id=${ORDER_ID}`
       )
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const data: PaymentStatus = await res.json()
       setPaymentData(data)
 
+      // Thứ tự quan trọng: gọi return_api_url trước để BE ghi DB, sau đó mới redirect.
+      // should_call_return = PayOS báo PAID nhưng BE chưa ghi, chỉ gọi 1 lần.
+      if (data.should_call_return && data.return_api_url && !hasCalledReturn.current) {
+        hasCalledReturn.current = true
+        stopPolling()
+        // return_api_url do BE dựng, navigate thẳng không fetch
+        window.location.href = data.return_api_url
+        return
+      }
+
+      if (data.should_redirect_frontend && data.redirect_url) {
+        stopPolling()
+        setStage('paid')
+        // redirect_url là URL tuyệt đối, dùng href để đi đúng domain BE cấu hình
+        window.location.href = data.redirect_url
+        return
+      }
+
       if (data.paid) {
-        stopPolling();
-        setStage('paid');
-        try {
-          await fetch(
-            `https://mmes-sep490.onrender.com/api/Requests/notify-customer-pay?request_id=${ORDER_ID}`,
-            {
-              method: 'GET',
-            }
-          );
-        } catch (error) {
-          console.error('Call API notify failed:', error);
-        }
+        stopPolling()
+        setStage('paid')
+        // không gọi notify-customer-pay, webhook payos đã tự gửi email + SignalR
         setTimeout(() => {
           router.push(`/payment-success/${ORDER_ID}`)
         }, 2000)
@@ -103,14 +123,17 @@ export default function Payment() {
     } catch (e) {
       console.error('Polling error:', e)
     }
-  }, [])
+  }, [ORDER_ID, router, stopPolling])
 
   useEffect(() => {
+    // khách đã huỷ trên PayOS thì không tạo link mới, không polling
+    if (searchParams.get('status') === 'cancel') return
+
     const init = async () => {
       try {
         // 1. Gọi API tạo link thanh toán
         const initRes = await fetch(
-          `https://mmes-sep490.onrender.com/api/Orders/create-payos-remaining-link/${ORDER_ID}`
+          `${envConfig.NEXT_API_ENDPOINT}/api/Orders/create-payos-remaining-link/${ORDER_ID}`
         )
         if (!initRes.ok) throw new Error(`HTTP ${initRes.status}`)
         const initData: PaymentInitData = await initRes.json()
@@ -118,19 +141,33 @@ export default function Payment() {
 
         // 2. Gọi API check status (giữ nguyên logic cũ)
         const res = await fetch(
-          `https://mmes-sep490.onrender.com/api/Orders/payos/remaining-status-by-order-id?order_id=${ORDER_ID}`
+          `${envConfig.NEXT_API_ENDPOINT}/api/Orders/payos/remaining-status-by-order-id?order_id=${ORDER_ID}`
         )
         if (!res.ok) throw new Error(`HTTP ${res.status}`)
         const data: PaymentStatus = await res.json()
         setPaymentData(data)
+
+        if (data.should_call_return && data.return_api_url && !hasCalledReturn.current) {
+          hasCalledReturn.current = true
+          window.location.href = data.return_api_url
+          return
+        }
+
+        if (data.should_redirect_frontend && data.redirect_url) {
+          setStage('paid')
+          window.location.href = data.redirect_url
+          return
+        }
 
         if (data.paid) {
           setStage('paid')
           return
         }
 
-        // ⚡ dùng QR từ API mới
-        await generateQR(initData.qr_code)
+        // ⚡ dùng QR từ API mới (`qr_code` có thể null theo type BE)
+        if (initData.qr_code) {
+          await generateQR(initData.qr_code)
+        }
 
         setStage('pending')
 
@@ -145,10 +182,91 @@ export default function Payment() {
 
     init()
     return () => stopPolling()
-  }, [checkStatus, generateQR])
+  }, [ORDER_ID, checkStatus, generateQR, stopPolling])
 
   const formatVND = (n: number) =>
     new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(n)
+
+  /*
+   * YC-NEW-1 — màn "đã huỷ thanh toán phần còn lại".
+   * BE gửi kèm `?orderCode=` để khách đối chiếu; đơn hàng vẫn còn nguyên,
+   * khách có thể vào lại đơn để thanh toán tiếp.
+   */
+  if (stage === 'cancelled') {
+    const orderCode = searchParams.get('orderCode')
+    return (
+      <div
+        style={{
+          minHeight: '100vh',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          background: '#f0f4f8',
+          fontFamily: "'Be Vietnam Pro', system-ui, sans-serif",
+          padding: '24px 16px',
+        }}
+      >
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: 16,
+            boxShadow: '0 4px 24px rgba(0,0,0,0.08)',
+            maxWidth: 440,
+            width: '100%',
+            padding: 32,
+            textAlign: 'center',
+          }}
+        >
+          <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+          <h2 style={{ fontSize: 20, fontWeight: 700, color: '#b45309', marginBottom: 8 }}>
+            Bạn đã huỷ thanh toán
+          </h2>
+          <p style={{ fontSize: 14, color: '#64748b', lineHeight: 1.6 }}>
+            Giao dịch chưa được thực hiện nên chưa có khoản tiền nào bị trừ.
+            {orderCode ? ` (Mã giao dịch: ${orderCode})` : ''}
+            <br />
+            Đơn hàng của bạn vẫn được giữ nguyên — bạn có thể thanh toán lại bất cứ lúc nào.
+          </p>
+          <button
+            onClick={() => router.push(`/payment/${ORDER_ID}`)}
+            style={{
+              width: '100%',
+              marginTop: 20,
+              padding: '13px',
+              background: '#0052cc',
+              color: '#fff',
+              border: 'none',
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 700,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Thanh toán lại
+          </button>
+          <button
+            onClick={() => router.push('/')}
+            style={{
+              width: '100%',
+              marginTop: 10,
+              padding: '13px',
+              background: '#fff',
+              color: '#475569',
+              border: '1px solid #e2e8f0',
+              borderRadius: 10,
+              fontSize: 14,
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'inherit',
+            }}
+          >
+            Về trang chủ
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   const formatElapsed = (s: number) => {
     const m = Math.floor(s / 60)

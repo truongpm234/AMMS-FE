@@ -9,6 +9,7 @@ import {
   WarningOutlined,
 } from "@ant-design/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/httpAxios";
 import {
   Badge,
   Button,
@@ -924,7 +925,7 @@ function GroupProductionTab() {
       }, 1000);
     },
     onError: (error: any) => {
-      message.error(error?.response?.data?.message || error.message || "Có lỗi xảy ra.");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra."));
     }
   });
 
@@ -1007,7 +1008,7 @@ function GroupProductionTab() {
       });
       setIsReviewModalOpen(true);
     } catch (error: any) {
-      message.error(error?.response?.data?.message || error.message || "Lỗi khi lấy thông tin preview.");
+      message.error(getErrorMessage(error, "Lỗi khi lấy thông tin preview."));
     } finally {
       setIsPreviewLoading(false);
     }

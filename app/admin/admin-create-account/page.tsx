@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { FiEye, FiEyeOff } from "react-icons/fi";
+import envConfig from "@/lib/config";
 
 /* ======================
    ROLE OPTIONS
@@ -77,7 +78,7 @@ export default function AdminCreateUser() {
       }
 
       const res = await fetch(
-        "https://mmes-sep490.onrender.com/admin-create-new-user",
+        `${envConfig.NEXT_API_ENDPOINT}/admin-create-new-user`,
         {
           method: "POST",
           headers: {

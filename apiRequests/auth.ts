@@ -5,7 +5,6 @@ import {
   LoginResType,
   RegisterResType,
 } from "@/schemaValidations/auth.schema";
-import { update } from "@react-spring/web";
 import axios from "axios";
 
 

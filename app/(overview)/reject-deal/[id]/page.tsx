@@ -4,7 +4,7 @@ import { otpsApi } from '@/apiRequests/otps'
 import { requestOrderApi } from '@/apiRequests/request'
 import {
   CloseCircleOutlined,
-  MobileOutlined
+  MailOutlined
 } from '@ant-design/icons'
 import {
   Button,
@@ -19,6 +19,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from 'next/navigat
 import { Suspense, useState } from 'react'
 import RejectDealSuccess from '../confirm'
 import axios from '@/apiRequests/axios'
+import { getErrorMessage } from "@/lib/httpAxios";
 
 const { Title, Text } = Typography
 const { TextArea } = Input
@@ -33,7 +34,13 @@ function RejectDealContent() {
 
   const [selectedReason, setSelectedReason] = useState("");
   const [otherReason, setOtherReason] = useState("");
-  const [phone, setPhone] = useState("");
+  /*
+   * BE.md mục 4.19 / 11b: OTP đã chuyển từ SMS (Twilio) sang EMAIL (Resend).
+   * => Ô nhập đổi từ "số điện thoại" thành "email" và gọi
+   *    /api/Otps/send-otp + /api/Otps/verify-otp (khuyến nghị của BE).
+   *    Biến vẫn đặt tên `email` cho rõ nghĩa.
+   */
+  const [email, setEmail] = useState("");
   const [otp, setOtp] = useState("");
 
   // Loading states
@@ -43,17 +50,20 @@ function RejectDealContent() {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const handleSendOtp = async () => {
-    if (!phone) {
-      message.warning("Vui lòng nhập số điện thoại");
+    if (!email) {
+      message.warning("Vui lòng nhập email");
       return;
     }
     try {
       setLoadingOtp(true);
-      await otpsApi.sendOtpSMS({ phone });
+      // Gửi OTP qua EMAIL (BE đã bỏ SMS/Twilio)
+      await otpsApi.sendOtp({ email });
       setOtpSent(true);
-      message.success("Mã OTP đã được gửi!");
+      message.success("Mã OTP đã được gửi tới email!");
     } catch (err: any) {
-      message.error(err.response?.data?.message || "Gửi OTP thất bại");
+      message.error(
+        err?.message || err.response?.data?.detail || "Gửi OTP thất bại"
+      );
     } finally {
       setLoadingOtp(false);
     }
@@ -64,7 +74,7 @@ function RejectDealContent() {
       message.error("Không tìm thấy mã đơn hàng");
       return;
     }
-    if (!phone || !otp) {
+    if (!email || !otp) {
       message.error("Vui lòng nhập đầy đủ thông tin xác thực");
       return;
     }
@@ -81,7 +91,8 @@ function RejectDealContent() {
         order_request_id: Number(orderId),
         // token: token || "",
         reason: finalReason,
-        phone,
+        // field tên là phone nhưng giá trị phải là email vì OTP gửi qua email
+        phone: email,
         otp
       }
       await requestOrderApi.rejectDeal(bodyResquest);
@@ -90,7 +101,7 @@ function RejectDealContent() {
       setIsSuccess(true);
       // router.push("/");
     } catch (err: any) {
-      message.error(err.response?.data?.message || "Từ chối thất bại");
+      message.error(getErrorMessage(err, "Từ chối thất bại"));
     } finally {
       setLoading(false);
     }
@@ -146,18 +157,18 @@ function RejectDealContent() {
           </div>
 
           <div className="space-y-6">
-            {/* Phone Input */}
+            {/* Email Input — OTP nay gửi qua email (BE đã bỏ SMS) */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Số điện thoại <span className="text-red-500">*</span>
+                Email <span className="text-red-500">*</span>
               </label>
               <div className="flex gap-2">
                 <Input
                   size="large"
-                  placeholder="Nhập số điện thoại"
-                  prefix={<MobileOutlined className="text-gray-400" />}
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="Nhập email nhận OTP"
+                  prefix={<MailOutlined className="text-gray-400" />}
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
                   disabled={otpSent}
                 />
                 <Button
@@ -165,7 +176,7 @@ function RejectDealContent() {
                   type="primary"
                   onClick={handleSendOtp}
                   loading={loadingOtp}
-                  disabled={otpSent || !phone}
+                  disabled={otpSent || !email}
                 >
                   {otpSent ? "Đã gửi" : "Gửi OTP"}
                 </Button>

@@ -5,6 +5,7 @@ import {
   FiUsers, FiPackage, FiLayers, FiList, FiFileText,
   FiChevronLeft, FiChevronRight,
 } from "react-icons/fi";
+import envConfig from "@/lib/config";
 
 /* =======================
    TYPES
@@ -194,7 +195,7 @@ export default function StatisticsPage() {
 
       try {
         // Fetch Users
-        const userRes = await fetch("https://mmes-sep490.onrender.com/get-all-user", { headers });
+        const userRes = await fetch(`${envConfig.NEXT_API_ENDPOINT}/get-all-user`, { headers });
         if (userRes.ok) {
           const userData = await userRes.json();
           setUsers(Array.isArray(userData) ? userData : []);
@@ -202,7 +203,7 @@ export default function StatisticsPage() {
 
         // Fetch Requests (Yêu cầu báo giá)
         try {
-          const reqRes = await fetch("https://mmes-sep490.onrender.com/api/Requests/paged?page=1&pageSize=500", { headers });
+          const reqRes = await fetch(`${envConfig.NEXT_API_ENDPOINT}/api/Requests/paged?page=1&pageSize=500`, { headers });
           if (reqRes.ok) {
             const reqData = await reqRes.json();
             setRequests(reqData.data || []);
@@ -213,7 +214,7 @@ export default function StatisticsPage() {
 
         // Fetch Orders (Đơn hàng sản xuất)
         try {
-          const orderRes = await fetch("https://mmes-sep490.onrender.com/api/Orders/paged?page=1&pageSize=500", { headers });
+          const orderRes = await fetch(`${envConfig.NEXT_API_ENDPOINT}/api/Orders/paged?page=1&pageSize=500`, { headers });
           if (orderRes.ok) {
             const orderData = await orderRes.json();
             setOrders(orderData.data || []);
@@ -224,7 +225,7 @@ export default function StatisticsPage() {
 
         // Fetch Materials
         try {
-          const materialRes = await fetch("https://mmes-sep490.onrender.com/api/Materials/get-all-materials", { headers });
+          const materialRes = await fetch(`${envConfig.NEXT_API_ENDPOINT}/api/Materials/get-all-materials`, { headers });
           if (materialRes.ok) {
             const materialData = await materialRes.json();
             setMaterials(Array.isArray(materialData) ? materialData : materialData.data || []);
@@ -235,7 +236,7 @@ export default function StatisticsPage() {
 
         // Fetch SubProducts (Components)
         try {
-          const subProductRes = await fetch("https://mmes-sep490.onrender.com/api/SubProducts/paged?page=1&pageSize=200", { headers });
+          const subProductRes = await fetch(`${envConfig.NEXT_API_ENDPOINT}/api/SubProducts/paged?page=1&pageSize=200`, { headers });
           if (subProductRes.ok) {
             const subProductData = await subProductRes.json();
             setSubProducts(subProductData.data || subProductData || []);

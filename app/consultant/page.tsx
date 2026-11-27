@@ -22,7 +22,6 @@ import {
   getProductTypeCode
 } from "@/lib/estimationUtils";
 import {
-  CreateRequestBody,
   CreateRequestBodyForConsultant,
   EstimateCostResponse,
   EstimatePaperResponse,
@@ -39,7 +38,7 @@ import {
   UploadOutlined,
   UserOutlined,
 } from "@ant-design/icons";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   Alert,
   Button,
@@ -509,13 +508,6 @@ function ConsultantForm() {
     materialRates,
     platePrices,
   } = useEstimationConfig();
-
-  const createRequestOrder = useMutation({
-    mutationFn: async (form: CreateRequestBody) => {
-      const res = await requestOrderApi.createRequestOrderByCustomer(form);
-      return res.data;
-    },
-  });
 
   // --- FETCH DATA ---
   useEffect(() => {

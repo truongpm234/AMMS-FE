@@ -2,6 +2,7 @@
 
 import { productionsApi } from "@/apiRequests/productions";
 import Loading from "@/app/manager/loading";
+import envConfig from "@/lib/config";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -329,7 +330,10 @@ export default function ProductionDetailPage() {
     formData.append("use_manual_input", "true");
 
     const res = await fetch(
-      `${process.env.NEXT_PUBLIC_API_ENDPOINT}/api/Tasks/qr`,
+      // BE.md mục 4.4 — POST /api/Tasks/qr (form-data, có file ảnh).
+      // Base URL lấy từ envConfig thay vì đọc thẳng NEXT_PUBLIC_API_ENDPOINT
+      // (biến đó không được set khi chạy dev -> sẽ ra "undefined").
+      `${envConfig.NEXT_API_ENDPOINT}/api/Tasks/qr`,
       {
         method: "POST",
         body: formData,
@@ -348,7 +352,8 @@ export default function ProductionDetailPage() {
     try {
       setQrLoading(true);
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_ENDPOINT}/api/Tasks/finish`,
+        // BE.md mục 4.4 — POST /api/Tasks/finish (form-data).
+        `${envConfig.NEXT_API_ENDPOINT}/api/Tasks/finish`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

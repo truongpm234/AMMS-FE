@@ -8,6 +8,7 @@ import { Spin } from "antd";
 import { FiSettings } from "react-icons/fi";
 import { showErrorToast, showSuccessToast } from "@/utils/toastService";
 import { useState } from "react";
+import { getErrorMessage } from "@/lib/httpAxios";
 
 export default function CustomerReceiveOrder() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -41,7 +42,7 @@ const handleReceiveOrder = async () => {
     await queryClient.invalidateQueries({ queryKey: ["request-detail", id] });
     setShowThankYouModal(true); // Mở thank you, không chuyển trang
   } catch (err: any) {
-    showErrorToast(err.response?.data?.message || "Có lỗi xảy ra!");
+    showErrorToast(getErrorMessage(err, "Có lỗi xảy ra!"));
   } finally {
     setIsReceiving(false);
   }

@@ -26,13 +26,13 @@ import {
 import dayjs from "dayjs";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import envConfig from "@/lib/config";
 
 const { Title } = Typography;
 
-// ✅ Đổi sang API mới
-const API_URL = "https://mmes-sep490.onrender.com/api/Requests/paged";
+// base URL lấy từ env, không hardcode
+const API_URL = `${envConfig.NEXT_API_ENDPOINT}/api/Requests/paged`;
 
-// ✅ Interface cập nhật theo response của API mới
 interface Order {
   order_request_id: number;
   customer_name: string;
@@ -120,7 +120,6 @@ export default function DeliveryPage() {
   const fetchOrders = useCallback(async () => {
     setLoading(true);
     try {
-      // ✅ Gọi API mới
       const response = await fetch(`${API_URL}?page=1&pageSize=500`, {
         headers: { accept: "*/*" },
       });
@@ -151,7 +150,7 @@ export default function DeliveryPage() {
       const search = searchText.toLowerCase().trim();
 
       return allOrders
-        // ✅ Dùng process_status thay vì status
+        // dùng process_status thay vì status
         .filter((o) =>
           statuses.includes(o.process_status?.toLowerCase() ?? "")
         )
@@ -159,7 +158,7 @@ export default function DeliveryPage() {
           if (!search) return true;
           if (o.customer_name?.toLowerCase().includes(search)) return true;
           if (o.product_name?.toLowerCase().includes(search)) return true;
-          // ✅ Tìm theo order_request_id thay vì code / order_id
+          // tìm theo order_request_id
           if (String(o.order_request_id).includes(search)) return true;
           if (o.order_id && String(o.order_id).includes(search)) return true;
           if (o.delivery_date && o.delivery_date !== "") {
@@ -197,7 +196,6 @@ export default function DeliveryPage() {
 
   const getColumns = (cfg: (typeof TAB_CONFIG)[number]) => [
     {
-      // ✅ Đổi từ "Mã Đơn" (code) sang "Mã Yêu Cầu" (order_request_id)
       title: "Mã YC",
       dataIndex: "order_request_id",
       key: "order_request_id",
@@ -244,7 +242,6 @@ export default function DeliveryPage() {
         ),
     },
     {
-      // ✅ Đổi từ created_at sang order_request_date
       title: "Ngày Tạo",
       dataIndex: "order_request_date",
       key: "order_request_date",
@@ -290,7 +287,6 @@ export default function DeliveryPage() {
     {
       key: "action",
       align: "center" as const,
-      // ✅ Dùng order_request_id cho đường dẫn chi tiết
       render: (_: unknown, record: Order) => (
         <Link href={`/consultant/delivery/detail/${record.order_id}`}>
           <Button size="small" icon={<EyeOutlined />}>
@@ -407,7 +403,6 @@ export default function DeliveryPage() {
           <Table
             columns={getColumns(tabConfig)}
             dataSource={currentOrders}
-            // ✅ Dùng order_request_id làm rowKey
             rowKey="order_request_id"
             bordered
             size="middle"

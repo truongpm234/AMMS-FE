@@ -2,7 +2,15 @@
 
 import { requestOrderApi } from "@/apiRequests/request";
 import { uploadApi } from "@/apiRequests/uploads";
-import { paymentApi, PaymentResponse } from "@/apiRequests/payment";
+import {
+  paymentApi,
+  PaymentResponse,
+  getPayOsDepositErrorText,
+  getDepositBlockedText,
+  getInconsistentEstimateText,
+  formatVnDateTime,
+  type ActiveDepositInfo,
+} from "@/apiRequests/payment";
 import { estimatesApi, QuoteOption } from "@/apiRequests/estimates";
 import { QRCodeCanvas } from "qrcode.react";
 import QuoteCard from "@/components/common/QuoteCard";
@@ -113,8 +121,52 @@ export default function RequestDetailPage() {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [loadingQR, setLoadingQR] = useState(false);
   const [estimate_finish_date, setEstimateFinishDate] = useState<string>("---");
+  /*
+   * YC-15/16 — pre-check cọc trước khi khách bấm "Thanh toán".
+   * `null` = chưa tải xong → KHÔNG chặn (để BE quyết định ở bước sau).
+   */
+  const [depositInfo, setDepositInfo] = useState<ActiveDepositInfo | null>(null);
 
   const { Panel } = Collapse;
+
+  /*
+   * YC-15/16 — `GET /api/Requests/{id}/active-deposit-info`.
+   * `can_deposit` dùng CHÍNH XÁC cùng luật với `payos-deposit` nên chặn ở đây
+   * là chính xác: khách không bấm rồi mới nhận 400 "Quote expired".
+   */
+  useEffect(() => {
+    let cancelled = false;
+    const fetchDepositInfo = async () => {
+      if (!requestId) return;
+      try {
+        const res = await paymentApi.getActiveDepositInfo(requestId);
+        const data = (res as any).data || res;
+        if (!cancelled) setDepositInfo((data as ActiveDepositInfo) ?? null);
+      } catch (error) {
+        console.error("Error fetching active deposit info:", error);
+        if (!cancelled) setDepositInfo(null);
+      }
+    };
+    fetchDepositInfo();
+    return () => {
+      cancelled = true;
+    };
+  }, [requestId]);
+
+  /** Lý do chặn cọc, null = được bấm. */
+  const depositBlockReason = (() => {
+    if (!depositInfo) return null;
+    if (depositInfo.active_estimate_count > 1) {
+      console.warn(
+        "[deposit] active_estimate_count > 1 — dữ liệu báo giá không nhất quán",
+        { request_id: requestId, count: depositInfo.active_estimate_count }
+      );
+      return getInconsistentEstimateText(requestId);
+    }
+    if (!depositInfo.can_deposit)
+      return getDepositBlockedText(depositInfo.reason, depositInfo.process_status);
+    return null;
+  })();
 
   useEffect(() => {
     const fetchQuotes = async () => {
@@ -145,14 +197,51 @@ export default function RequestDetailPage() {
     setLoadingQR(true);
     setPaymentInfo(null);
     try {
-      const res = await paymentApi.getPaymentQR(String(quote.order_request_id), quote.quote_id, quote.estimate_id);
+      // Gọi lại ngay trước payos-deposit: báo giá có thể hết hạn trong lúc khách chờ.
+      // estimate_id cũng lấy từ đây, không tự chọn từ quote.
+      let deposit: ActiveDepositInfo | null = null;
+      try {
+        const infoRes = await paymentApi.getActiveDepositInfo(
+          quote.order_request_id
+        );
+        deposit = ((infoRes as any).data || infoRes) as ActiveDepositInfo;
+      } catch {
+        // lỗi mạng/404 thì để payos-deposit báo lỗi cụ thể
+        deposit = null;
+      }
+
+      if (deposit && deposit.active_estimate_count > 1) {
+        console.warn(
+          "[deposit] active_estimate_count > 1 — dữ liệu báo giá không nhất quán",
+          { request_id: quote.order_request_id, count: deposit.active_estimate_count }
+        );
+        message.error(getInconsistentEstimateText(quote.order_request_id));
+        setIsModalVisible(false);
+        return;
+      }
+
+      if (deposit && !deposit.can_deposit) {
+        message.error(getDepositBlockedText(deposit.reason, deposit.process_status));
+        setIsModalVisible(false);
+        return;
+      }
+
+      // getPaymentQR(request_id, estimate_id, quote_id?)
+      const estimateId = deposit?.estimate_id || quote.estimate_id;
+      const quoteId = deposit?.quote_id ?? quote.quote_id;
+
+      const res = await paymentApi.getPaymentQR(
+        quote.order_request_id,
+        estimateId,
+        quoteId
+      );
       const data = (res as any).data || res;
       if (data) {
         setPaymentInfo(data);
       }
     } catch (error) {
       console.error("Error fetching payment QR:", error);
-      message.error("Lỗi khi lấy thông tin thanh toán");
+      message.error(getPayOsDepositErrorText(error));
       setIsModalVisible(false);
     } finally {
       setLoadingQR(false);
@@ -164,10 +253,16 @@ export default function RequestDetailPage() {
 
     const checkPaymentStatus = async () => {
       try {
-        const response = await paymentApi.getStatusPayment(requestId, selectedQuote.quote_id, selectedQuote.estimate_id);
+        // getStatusPayment(request_id, estimate_id, quote_id?)
+        const response = await paymentApi.getStatusPayment(
+          requestId,
+          selectedQuote.estimate_id,
+          selectedQuote.quote_id
+        );
         const data = (response as any).data || response;
 
-        if (data && data.status === 'PAID') {
+        /* YC 3.1 — dùng `paid`/`processed` thay vì so sánh `status` raw. */
+        if (data && (data.paid === true || data.processed === true)) {
           router.push(`/request-detail/${requestId}`);
           setIsModalVisible(false);
         }
@@ -756,13 +851,28 @@ export default function RequestDetailPage() {
                       estimateFinishDate={estimate_finish_date}
                       actions={
                         !["PAID", "COMPLETED", "ACCEPTED"].includes(requestDetail?.process_status?.toUpperCase() || "") && (
-                          <Button
-                            type="primary"
-                            className="h-10 px-8 rounded-lg font-medium bg-emerald-600 hover:bg-emerald-500 border-none shadow-md shadow-emerald-200 w-full sm:w-auto mt-2 sm:mt-0"
-                            onClick={() => handlePayClick(quote)}
-                          >
-                            Thanh toán
-                          </Button>
+                          <div className="w-full sm:w-auto flex flex-col items-stretch sm:items-end gap-2">
+                            <Button
+                              type="primary"
+                              disabled={!!depositBlockReason}
+                              className={`h-10 px-8 rounded-lg font-medium border-none shadow-md w-full sm:w-auto mt-2 sm:mt-0 ${
+                                depositBlockReason
+                                  ? "bg-slate-300 text-slate-500"
+                                  : "bg-emerald-600 hover:bg-emerald-500 shadow-emerald-200"
+                              }`}
+                              onClick={() => handlePayClick(quote)}
+                            >
+                              Thanh toán
+                            </Button>
+                            {/* YC-15: chặn sớm + hiện lý do tiếng Việt từ BE
+                                ("Báo giá đã hết hạn lúc ...") thay vì để
+                                khách bấm rồi nhận 400 từ `payos-deposit`. */}
+                            {depositBlockReason && (
+                              <span className="text-xs text-rose-600 max-w-[280px] text-left sm:text-right">
+                                {depositBlockReason}
+                              </span>
+                            )}
+                          </div>
                         )
                       }
                     />

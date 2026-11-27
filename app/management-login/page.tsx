@@ -3,6 +3,12 @@
 
 import authApiRequest from "@/apiRequests/auth";
 import { useAuth } from "@/lib/auth-context";
+import { ROLE_LOGIN_REDIRECTS } from "@/lib/roles";
+import {
+    GOOGLE_CLIENT_ID,
+    GOOGLE_GSI_SCRIPT_SRC,
+    isGoogleLoginConfigured,
+} from "@/lib/googleAuth";
 import {
     LoginBodyAlternative,
     LoginBodyAlternativeType,
@@ -119,36 +125,12 @@ export default function ManagementLoginPage() {
                 full_name,
             });
 
-            // Redirect theo role
-            switch (role_id) {
-                case 1:
-                    router.replace("/admin");
-                    break;
-                case 2:
-                    router.replace("/consultant/requests");
-                    break;
-                case 3:
-                    router.replace("/manager");
-                    break;
-                case 4:
-                    router.replace("/warehouse");
-                    break;
-                case 5:
-                    router.replace("/");
-                    break;
-                case 6:
-                    router.replace("/productions-manager");
-                    break;
-                case 7:
-                    router.replace("/staff");
-                    break;
-                case 18:
-                    router.replace("/general-manager");
-                    break;
-                default:
-                    router.replace("/management-login");
-                    break;
-            }
+            /*
+             * Redirect theo role — dùng ROLE_LOGIN_REDIRECTS (lib/roles.ts).
+             * Trước đây là switch/case 1,2,3,4,5,6,7,18 hardcode tại đây và
+             * lặp lại ở login/page.tsx + proxy.ts.
+             */
+            router.replace(ROLE_LOGIN_REDIRECTS[role_id] ?? "/management-login");
 
         } catch (err: any) {
             console.error("Login error:", err);
@@ -191,7 +173,7 @@ export default function ManagementLoginPage() {
         if (document.getElementById("google-gsi")) return;
 
         const script = document.createElement("script");
-        script.src = "https://accounts.google.com/gsi/client";
+        script.src = GOOGLE_GSI_SCRIPT_SRC;
         script.async = true;
         script.defer = true;
         script.id = "google-gsi";
@@ -230,36 +212,8 @@ export default function ManagementLoginPage() {
                 full_name: decoded.name,
             });
 
-            //Redirect giống login thường
-            switch (role_id) {
-                case 1:
-                    router.replace("/admin");
-                    break;
-                case 2:
-                    router.replace("/consultant/requests");
-                    break;
-                case 3:
-                    router.replace("/manager");
-                    break;
-                case 4:
-                    router.replace("/warehouse");
-                    break;
-                case 5:
-                    router.replace("/");
-                    break;
-                case 6:
-                    router.replace("/productions-manager");
-                    break;
-                case 7:
-                    router.replace("/staff");
-                    break;
-                case 18:
-                    router.replace("/general-manager");
-                    break;
-                default:
-                    router.replace("/management-login");
-                    break;
-            }
+            // Redirect giống login thường — mapping tập trung ở lib/roles.ts
+            router.replace(ROLE_LOGIN_REDIRECTS[role_id] ?? "/management-login");
 
         } catch (err) {
             console.error("Google login error:", err);
@@ -273,9 +227,11 @@ export default function ManagementLoginPage() {
     const handleGoogleLogin = () => {
         if (!window.google) return;
 
+        // Client ID đọc từ NEXT_PUBLIC_GOOGLE_CLIENT_ID (lib/googleAuth.ts)
+        if (!isGoogleLoginConfigured()) return;
+
         window.google.accounts.id.initialize({
-            client_id:
-                "222419838594-dicvpm40bukb6e5mdk2chtrhfbigg8eo.apps.googleusercontent.com",
+            client_id: GOOGLE_CLIENT_ID,
             callback: handleCredentialResponse,
             use_fedcm: false,
             auto_select: false,

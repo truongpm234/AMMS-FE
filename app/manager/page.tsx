@@ -13,6 +13,7 @@ import {
 } from "chart.js";
 import { Doughnut, Line } from "react-chartjs-2";
 import * as signalR from "@microsoft/signalr";
+import envConfig from "@/lib/config";
 
 ChartJS.register(ArcElement, CategoryScale, LinearScale, Tooltip, Legend, PointElement, LineElement);
 
@@ -158,14 +159,14 @@ export default function Dashboard() {
       setLoading(true);
       // Fetch Requests (Yêu cầu báo giá)
       const resReqs = await fetch(
-        "https://mmes-sep490.onrender.com/api/Requests/paged?page=1&pageSize=500"
+        `${envConfig.NEXT_API_ENDPOINT}/api/Requests/paged?page=1&pageSize=500`
       );
       const dataReqs = await resReqs.json();
       setOrders((dataReqs.data || []).filter((o: any) => o.product_name));
 
       // Fetch Production Orders (Đơn hàng sản xuất)
       const resOrders = await fetch(
-        "https://mmes-sep490.onrender.com/api/Orders/paged?page=1&pageSize=500"
+        `${envConfig.NEXT_API_ENDPOINT}/api/Orders/paged?page=1&pageSize=500`
       );
       const dataOrders = await resOrders.json();
       setProdOrders(dataOrders.data || []);
@@ -173,7 +174,7 @@ export default function Dashboard() {
       // Fetch Machines
       try {
         const resMachines = await fetch(
-          "https://mmes-sep490.onrender.com/api/Machine/get-all-machines"
+          `${envConfig.NEXT_API_ENDPOINT}/api/Machine/get-all-machines`
         );
         const dataMachines = await resMachines.json();
         setMachines(Array.isArray(dataMachines) ? dataMachines : (dataMachines.data || []));
@@ -184,7 +185,7 @@ export default function Dashboard() {
       // Fetch Machine Snapshot
       try {
         const resSnapshot = await fetch(
-          "https://mmes-sep490.onrender.com/api/Machine/availability-snapshot"
+          `${envConfig.NEXT_API_ENDPOINT}/api/Machine/availability-snapshot`
         );
         const dataSnapshot = await resSnapshot.json();
         setMachineSnapshot(dataSnapshot || null);
@@ -196,7 +197,7 @@ export default function Dashboard() {
       try {
         const token = localStorage.getItem("token");
         const resUsers = await fetch(
-          "https://mmes-sep490.onrender.com/get-all-user",
+          `${envConfig.NEXT_API_ENDPOINT}/get-all-user`,
           {
             headers: token ? { Authorization: `Bearer ${token}` } : {},
           }
@@ -219,7 +220,7 @@ export default function Dashboard() {
     fetchData();
 
     const connection = new signalR.HubConnectionBuilder()
-      .withUrl("https://mmes-sep490.onrender.com/hubs/realtime", {
+      .withUrl(`${envConfig.NEXT_API_ENDPOINT}/hubs/realtime`, {
         accessTokenFactory: () => localStorage.getItem("token") || "",
       })
       .withAutomaticReconnect()
@@ -243,8 +244,9 @@ export default function Dashboard() {
           fetchData();
         });
 
-        connection.on("consultantCreateRequest", (data) => {
-
+        connection.on("consultant-create-request", (data) => {
+          // YC-18: tên chuẩn (cũ: "consultantCreateRequest" — BE phát song song
+          // 1 sprint rồi xoá; subscribe cả 2 sẽ refresh 2 lần).
 
           fetchData();
         });

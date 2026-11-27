@@ -14,6 +14,7 @@ import type { ColumnsType } from "antd/es/table";
 import { SearchOutlined, CheckCircleOutlined, ReloadOutlined } from "@ant-design/icons";
 import { subProductsApi, SubProduct } from "@/apiRequests/subproducts";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { getErrorMessage } from "@/lib/httpAxios";
 
 function SubProductsImportContent() {
   const [keyword, setKeyword] = useState("");
@@ -61,7 +62,7 @@ function SubProductsImportContent() {
       refetch();
     },
     onError: (error: any) => {
-      message.error(error?.response?.data?.message || "Có lỗi xảy ra khi tạo phiếu nhập kho.");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra khi tạo phiếu nhập kho."));
     }
   });
 

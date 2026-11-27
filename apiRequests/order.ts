@@ -1,5 +1,5 @@
 import http from "@/lib/httpAxios";
-import { CommonResType, CreateRequestBody } from "../schemaValidations/common.schema";
+import { CommonResType } from "../schemaValidations/common.schema";
 
 export interface QuoteField {
   request_date: string;
@@ -249,17 +249,75 @@ export const orderApi = {
   getListByStatus: (page: number = 1, pageSize: number = 10, status: string) =>
     http.get<CommonResType>(`/api/Orders/paged?page=${page}&pageSize=${pageSize}&status=${status}`),
 
-  createRequestOrderByCustomer: (body: CreateRequestBody) =>
-    http.post<CommonResType>("/api/Orders", body),
-
+  /**
+   * BE không có POST /api/Orders. Tạo yêu cầu đặt hàng thì dùng
+   * requestOrderApi.createRequestOrderByCustomer.
+   */
   getDetail: (id: string) => http.get<OrderDetailResponse>(`/api/Orders/detail/${id}`),
 
-  updateOrder: (id: string, body: Partial<CreateRequestBody>) =>
-    http.put<CommonResType>(`/api/Orders/${id}`, body),
-
-  deleteOrder: (id: string) =>
-    http.delete<CommonResType>(`/api/Orders/${id}`),
-
+  /**
+   * PUT /api/Orders/{id} · DELETE /api/Orders/{id} — ĐÃ XOÁ (BE không có).
+   * BE không hỗ trợ sửa/xoá order trực tiếp; mọi thay đổi đi qua
+   * Requests/Productions. Kiểm tra ngày 2026-11-25: không còn call site nào.
+   */
   getListAllWithProductionTracking: (page: number = 1, pageSize: number = 100) =>
     http.get<IOrderPaginationResponse>(`/api/Orders/all-with-production-tracking?page=${page}&pageSize=${pageSize}`),
+
+  /* ------------------------------------------------------------------
+   * Instruction.md mục 7.7 — CÁC ENDPOINT ORDERS CÒN THIẾU
+   * ------------------------------------------------------------------ */
+
+  /** GET /api/Orders/get-by-{code} — tra đơn theo mã đơn. */
+  getByCode: (code: string | number) =>
+    http.get<OrderDetailResponse>(`/api/Orders/get-by-${code}`),
+
+  /** GET /api/Orders/missing-materials — vật tư thiếu của các đơn. */
+  getMissingMaterials: () =>
+    http.get<any[]>("/api/Orders/missing-materials"),
+
+  /**
+   * DELETE /api/Orders/delete-design-file-path?orderRequestId=
+   * (query param, không phải path param)
+   */
+  deleteDesignFilePath: (orderRequestId: number | string) =>
+    http.delete<CommonResType>(
+      `/api/Orders/delete-design-file-path?orderRequestId=${orderRequestId}`
+    ),
+
+  /**
+   * Path này tồn tại nhưng là absolute, không có prefix /api/Orders.
+   * Gọi /api/Orders/get-all-order-with-status-Inprocess sẽ 404.
+   * @deprecated dùng getTrackingByStatus("InProcessing") hoặc getByCurrentProcess().
+   */
+  getAllOrderInProcess: () =>
+    http.get<any[]>("/get-all-order-with-status-Inprocess"),
+
+  /** POST /api/Orders/send-remaining-payment-email/{orderId} — gửi mail nhắc trả phần còn lại. */
+  sendRemainingPaymentEmail: (orderId: number | string) =>
+    http.post<CommonResType>(`/api/Orders/send-remaining-payment-email/${orderId}`, {}),
+
+  /** GET /api/Orders/create-payos-remaining-link/{orderId} — tạo link PayOS phần còn lại. */
+  createPayosRemainingLink: (orderId: number | string) =>
+    http.get<any>(`/api/Orders/create-payos-remaining-link/${orderId}`),
+
+  /**
+   * GET /api/Orders/payos/remaining-status-by-order-id?order_id=&orderCode=
+   * Polling trạng thái thanh toán phần còn lại.
+   * Param phải là order_id (snake_case), orderId trả 400.
+   */
+  getPayosRemainingStatus: (orderId: number | string, orderCode?: number | string) => {
+    const params = new URLSearchParams({ order_id: String(orderId) });
+    if (orderCode !== undefined && orderCode !== null) params.append("orderCode", String(orderCode));
+    return http.get<any>(`/api/Orders/payos/remaining-status-by-order-id?${params.toString()}`);
+  },
+
+  /** GET /api/Orders/tracking-by-status — OrderFullTrackingDto */
+  getTrackingByStatus: (status?: string) => {
+    const qs = status ? `?status=${encodeURIComponent(status)}` : "";
+    return http.get<any[]>(`/api/Orders/tracking-by-status${qs}`);
+  },
+
+  /** GET /api/Orders/by-current-process — OrdersByProcessDto[] */
+  getByCurrentProcess: () =>
+    http.get<any[]>("/api/Orders/by-current-process"),
 };

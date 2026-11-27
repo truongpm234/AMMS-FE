@@ -22,6 +22,7 @@ import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { productionsApi } from "@/apiRequests/productions";
 import { useRouter } from "next/navigation";
+import envConfig from "@/lib/config";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -131,14 +132,14 @@ const FinishProduction: React.FC = () => {
     try {
       setLoading(true);
       const res = await fetch(
-        "https://mmes-sep490.onrender.com/api/Requests/paged?page=1&pageSize=500"
+        `${envConfig.NEXT_API_ENDPOINT}/api/Requests/paged?page=1&pageSize=500`
       );
       if (!res.ok) throw new Error(`HTTP error: ${res.status}`);
 
       const json: PagedResponse = await res.json();
 
       const mapped: RequestItem[] = (json.data || []).map((r: any) => ({
-        order_id: r.order_id, // 🔥 vẫn giữ order_id
+        order_id: r.order_id,
         order_request_id: r.order_request_id,
         code: r.order_id,
         customer_name: r.customer_name,

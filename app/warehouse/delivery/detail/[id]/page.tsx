@@ -17,8 +17,9 @@ import dayjs from "dayjs";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { productionsApi } from "@/apiRequests/productions";
+import envConfig from "@/lib/config";
 
-const API_BASE = "https://mmes-sep490.onrender.com/api/Requests/get-by-order-id";
+const API_BASE = `${envConfig.NEXT_API_ENDPOINT}/api/Requests/get-by-order-id`;
 
 interface OrderRequest {
   order_request_id: number;

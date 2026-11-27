@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
+import envConfig from "@/lib/config";
 
 /* ======================
    TYPES
@@ -61,7 +62,7 @@ export default function AdminUpdatePage() {
   useEffect(() => {
     if (!id) return;
 
-    fetch("https://mmes-sep490.onrender.com/get-all-user", {
+    fetch(`${envConfig.NEXT_API_ENDPOINT}/get-all-user`, {
       headers: {
         Authorization: `Bearer ${localStorage.getItem("token")}`,
       },
@@ -109,7 +110,7 @@ export default function AdminUpdatePage() {
       }
 
       const res = await fetch(
-        `https://mmes-sep490.onrender.com/admin-update-user/${id}`,
+        `${envConfig.NEXT_API_ENDPOINT}/admin-update-user/${id}`,
         {
           method: "POST",
           headers: {

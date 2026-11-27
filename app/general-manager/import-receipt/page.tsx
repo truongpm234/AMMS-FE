@@ -23,6 +23,7 @@ import dayjs, { Dayjs } from "dayjs";
 import isSameOrAfter from "dayjs/plugin/isSameOrAfter";
 import isSameOrBefore from "dayjs/plugin/isSameOrBefore";
 import { Suspense, useMemo, useState } from "react";
+import { getErrorMessage } from "@/lib/httpAxios";
 
 dayjs.extend(isSameOrAfter);
 dayjs.extend(isSameOrBefore);
@@ -107,7 +108,7 @@ function ImportReceiptContent() {
       refetch();
     },
     onError: (error: any) => {
-      message.error(error?.response?.data?.message || "Có lỗi xảy ra khi tạo phiếu nhập kho.");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra khi tạo phiếu nhập kho."));
     }
   });
 
@@ -123,7 +124,7 @@ function ImportReceiptContent() {
       refetch();
     },
     onError: (error: any) => {
-      message.error(error?.response?.data?.message || "Có lỗi xảy ra khi lưu phiếu nhập kho.");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra khi lưu phiếu nhập kho."));
     }
   });
 

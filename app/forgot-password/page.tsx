@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import envConfig from "@/lib/config";
 
-const API_BASE = "https://mmes-sep490.onrender.com";
+// Base URL lấy từ env — trước đây hardcode "https://mmes-sep490.onrender.com"
+const API_BASE = envConfig.NEXT_API_ENDPOINT;
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");

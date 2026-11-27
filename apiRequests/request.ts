@@ -1,4 +1,5 @@
 import http from "@/lib/httpAxios";
+import envConfig from "@/lib/config";
 import { CommonResType, CreateRequestBody, CreateRequestBodyForConsultant, RejectDealRequest, UpdateRequestBody } from "../schemaValidations/common.schema";
 import { RequestDetailResponse } from "@/lib/request.types";
 
@@ -348,9 +349,24 @@ export const requestOrderApi = {
   confirmImporting: (order_id: number) =>
     http.put<CommonResType>('/api/Requests/confirm-importing', order_id),
 
+  /**
+   * PUT /api/Requests/contract-check-status
+   * @deprecated KHÔNG có trong swagger BE.
+   *
+   * BE thay bằng bộ 3 API hợp đồng thuộc `EstimatesController`
+   * (Instruction.md mục 7.3):
+   *   POST /api/Estimates/upload-consultant-contract
+   *   POST /api/Estimates/upload-customer-signed-contract
+   *   PUT  /api/Estimates/save-consultant-contract-path
+   * (đã có trong apiRequests/estimates.ts)
+   */
   contractCheckStatus: (body: { request_id: number, is_check_contract: boolean, note?: string }) =>
     http.put<CommonResType>(`/api/Requests/contract-check-status`, body),
 
+  /**
+   * POST /api/Requests/email-request-resign-contract
+   * @deprecated KHÔNG có trong swagger BE — cần BE xác nhận lại route.
+   */
   emailRequestResignContract: (body: { request_id: number, custom_message: string }) =>
     http.post<CommonResType>(`/api/Requests/email-request-resign-contract`, body),
 
@@ -360,4 +376,82 @@ export const requestOrderApi = {
   getRequestbyConsultant: (page: number, pageSize: number) => http.get<OrderManagementData>(`/api/Requests/get-requests-and-order-by-login?page=${page}&pageSize=${pageSize}`),
 
   getRequestByOrderId: (orderId: number) => http.get<RequestDetailResponse>(`/api/Requests/get-by-order-id/${orderId}`),
+
+  /*
+   * Thanh toán cọc
+   */
+
+  /**
+   * GET /api/Requests/accept-pay?orderRequestId=&token=
+   * Endpoint này redirect 302 sang PayOS, không trả JSON nên phải dùng
+   * window.location.href thay vì axios.
+   * token là tham số BE không đọc, để optional cho link cũ.
+   * Khách đã reject thì BE redirect về /deal-invalid.
+   */
+  getAcceptPayUrl: (orderRequestId: number | string, token?: string) => {
+    const params = new URLSearchParams({
+      orderRequestId: String(orderRequestId),
+    });
+    if (token) params.append("token", token);
+    return `${envConfig.NEXT_API_ENDPOINT}/api/Requests/accept-pay?${params.toString()}`;
+  },
+
+  /** Chuyển trình duyệt sang trang thanh toán PayOS (302). */
+  redirectToAcceptPay: (orderRequestId: number | string, token?: string) => {
+    if (typeof window !== "undefined") {
+      window.location.href = requestOrderApi.getAcceptPayUrl(orderRequestId, token);
+    }
+  },
+
+  /**
+   * GET /api/Requests/payos/status-by-request-id?request_id=&estimate_id=&quote_id=
+   * Polling trạng thái cọc sau khi PayOS redirect về.
+   * request_id và estimate_id bắt buộc, quote_id optional.
+   */
+  getPayosStatus: (
+    requestId: number | string,
+    estimateId?: number | string | null,
+    quoteId?: number | string | null
+  ) => {
+    const params = new URLSearchParams({ request_id: String(requestId) });
+    if (estimateId !== undefined && estimateId !== null && estimateId !== "")
+      params.append("estimate_id", String(estimateId));
+    if (quoteId !== undefined && quoteId !== null && quoteId !== "")
+      params.append("quote_id", String(quoteId));
+    return http.get<any>(
+      `/api/Requests/payos/status-by-request-id?${params.toString()}`
+    );
+  },
+
+  /** GET /api/Requests/get-cost-estimate/{order_id} */
+  getCostEstimate: (orderId: number | string) =>
+    http.get<any>(`/api/Requests/get-cost-estimate/${orderId}`),
+
+  /** GET /api/Requests/design-file/{id} */
+  getDesignFile: (id: number | string) =>
+    http.get<any>(`/api/Requests/design-file/${id}`),
+
+  /** GET /api/Requests/payos-deposit/{request_id} */
+  getPayosDeposit: (requestId: number | string) =>
+    http.get<any>(`/api/Requests/payos-deposit/${requestId}`),
+
+  /** GET /api/Requests/get-deal-price-inProcess/{request_id} — manager so sánh báo giá */
+  getDealPriceInProcess: (requestId: number | string) =>
+    http.get<any>(`/api/Requests/get-deal-price-inProcess/${requestId}`),
+
+  /** PUT /api/Requests/{id}/delivery-note */
+  updateDeliveryNote: (id: number | string, body: Record<string, unknown>) =>
+    http.put<CommonResType>(`/api/Requests/${id}/delivery-note`, body),
+
+  /**
+   * @deprecated Endpoint này chỉ đọc trạng thái (trả "Deposited" / "Full paid"),
+   * không gửi email/SMS. Webhook payos đã tự gửi nên không cần gọi.
+   * Dùng paymentApi.getStatusPayment() hoặc getRemainingStatus() thay thế.
+   */
+  notifyCustomerPay: (id: number | string) =>
+    http.get<string>(`/api/Requests/notify-customer-pay?id=${id}`),
+
+  /** GET /api/Requests/stats/email/accepted — thống kê email đã gửi */
+  getStatsEmailAccepted: () =>
+    http.get<any>(`/api/Requests/stats/email/accepted`),
 };

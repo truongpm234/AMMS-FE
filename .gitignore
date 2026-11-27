@@ -17,6 +17,13 @@
 /.next/
 /out/
 
+# package manager — repo này CHỈ dùng npm (package-lock.json).
+# Chặn yarn.lock / pnpm-lock.yaml bị sinh lại do ai đó lỡ chạy yarn/pnpm.
+yarn.lock
+pnpm-lock.yaml
+.pnpm-store/
+.yarn/
+
 # production
 /build
 
@@ -32,6 +39,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# ...nhưng file mẫu (.env.example) PHẢI được commit để người mới clone về biết
+# cần khai báo những biến gì (quy ước 12-factor app).
+!.env.example
 
 # vercel
 .vercel

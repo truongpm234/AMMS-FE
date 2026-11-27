@@ -122,8 +122,12 @@ export function resolveFinalQtyGood(
 
 export interface MaterialReportPayload {
   material_id: number;
-  quantity_used: number;
-  quantity_left: number;
+  /**
+   * Key chuẩn là mat_quantity_used (kiểu number). BE vẫn parse được
+   * quantity_used cũ nhưng nên dùng tên mới.
+   */
+  mat_quantity_used: number;
+  mat_quantity_left: number;
   is_stock: boolean;
 }
 
@@ -157,8 +161,8 @@ export function buildMaterialsReportJson(
       if (mat._isPaperInPrint) {
         return {
           material_id: mat.material_id,
-          quantity_used: 0,
-          quantity_left: 0,
+          mat_quantity_used: 0,
+          mat_quantity_left: 0,
           is_stock: false,
         };
       }
@@ -169,8 +173,8 @@ export function buildMaterialsReportJson(
       if (isEstimate) {
         return {
           material_id: mat.material_id,
-          quantity_used: 0,
-          quantity_left: qtyLeft,
+          mat_quantity_used: 0,
+          mat_quantity_left: qtyLeft,
           is_stock: resolveIsStock(qtyLeft),
         };
       }
@@ -179,8 +183,8 @@ export function buildMaterialsReportJson(
 
       return {
         material_id: mat.material_id,
-        quantity_used: qtyUsed,
-        quantity_left: qtyLeft,
+        mat_quantity_used: qtyUsed,
+        mat_quantity_left: qtyLeft,
         is_stock: resolveIsStock(qtyLeft),
       };
     }) ?? []

@@ -20,11 +20,12 @@ import { Button, Divider, Image, Input, Modal, Spin, message } from "antd";
 import dayjs from "dayjs";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import envConfig from "@/lib/config";
 
-const API_BASE = "https://mmes-sep490.onrender.com/api/Requests/get-by-order-id";
-const COST_ESTIMATE_API = "https://mmes-sep490.onrender.com/api/Requests/get-cost-estimate";
-const DELIVERY_NOTE_API = "https://mmes-sep490.onrender.com/api/Requests";
-const SEND_EMAIL_API = "https://mmes-sep490.onrender.com/api/Orders/send-remaining-payment-email";
+const API_BASE = `${envConfig.NEXT_API_ENDPOINT}/api/Requests/get-by-order-id`;
+const COST_ESTIMATE_API = `${envConfig.NEXT_API_ENDPOINT}/api/Requests/get-cost-estimate`;
+const DELIVERY_NOTE_API = `${envConfig.NEXT_API_ENDPOINT}/api/Requests`;
+const SEND_EMAIL_API = `${envConfig.NEXT_API_ENDPOINT}/api/Orders/send-remaining-payment-email`;
 
 interface OrderRequest {
   order_request_id: number;

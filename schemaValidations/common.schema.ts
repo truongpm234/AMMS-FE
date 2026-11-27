@@ -514,15 +514,61 @@ export interface RequestDetailResponse {
 
 
 
+/* ============================================================================
+ * QR — luồng hoàn thành công đoạn (Instruction.md mục 8)
+ * ----------------------------------------------------------------------------
+ * ⚠️ `materials_json` / `outputs_json` / `reference_inputs_json` được gửi dưới
+ *    dạng **CHUỖI JSON của mảng** (`JSON.stringify(array)`) trong multipart
+ *    form — KHÔNG phải mảng trực tiếp. `tasksApi.createQRByStageId` đã tự
+ *    stringify, ở đây chỉ khai báo đúng shape phần tử.
+ * ==========================================================================*/
+
+/**
+ * 1 dòng vật tư tiêu hao.
+ * ⚠️ Dùng key **`mat_quantity_used`** (không phải `quantity_used`) theo
+ *    khuyến nghị của BE — dù BE vẫn parse được tên cũ.
+ */
+export interface QrMaterialInput {
+  material_id: number;
+  /** Số lượng thực tế đã dùng — key chuẩn của BE */
+  mat_quantity_used: number;
+  /** Số lượng còn lại (nhập kho) */
+  mat_quantity_left?: number;
+  unit?: string;
+}
+
+/** 1 dòng BTP lấy từ công đoạn trước. */
+export interface QrReferenceInput {
+  input_code: string;
+  input_name?: string;
+  unit?: string;
+  quantity_used: number;
+  quantity_left?: number;
+}
+
+/** 1 dòng thành phẩm/đầu ra. */
+export interface QrOutput {
+  output_code: string;
+  output_name?: string;
+  unit?: string;
+  quantity_good: number;
+  quantity_bad?: number;
+}
+
 export interface CreateQRBody {
   task_id: number;
-  ttl_minutes: number;
-  qty_good: number;
-  materials_json?: any[];
-  reference_inputs_json?: any[];
-  outputs_json?: any[];
+  /** Mặc định BE 6000 phút; QR có TTL — UI nên đếm ngược */
+  ttl_minutes?: number;
+  /** Phải nằm trong [min_allowed, max_allowed] của qr-prepare */
+  qty_good?: number;
+  /** true khi tổ trưởng nhập tay (bắt buộc có `reason` khi khác gợi ý) */
   use_manual_input?: boolean;
+  /** Lý do nhập khác sản lượng gợi ý */
   reason?: string;
+  materials_json?: QrMaterialInput[];
+  reference_inputs_json?: QrReferenceInput[];
+  outputs_json?: QrOutput[];
+  /** Ảnh minh chứng */
   images?: File[];
 }
 

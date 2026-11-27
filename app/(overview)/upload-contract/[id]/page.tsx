@@ -15,6 +15,7 @@ import {
 import type { UploadFile, UploadProps } from 'antd'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { Suspense, useState } from 'react'
+import { getErrorMessage } from "@/lib/httpAxios";
 
 const { Title, Text } = Typography
 
@@ -58,7 +59,7 @@ function UploadContractContent() {
       message.success("Tải lên hợp đồng thành công!");
       setIsSuccess(true);
     } catch (err: any) {
-      message.error(err.response?.data?.message || "Tải lên thất bại. Vui lòng thử lại.");
+      message.error(getErrorMessage(err, "Tải lên thất bại. Vui lòng thử lại."));
     } finally {
       setLoading(false);
     }

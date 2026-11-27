@@ -5,6 +5,7 @@ import {
   FiUploadCloud, FiFile, FiX, FiCheckCircle, FiAlertCircle,
   FiSearch, FiLock, FiUnlock,
 } from "react-icons/fi";
+import envConfig from "@/lib/config";
 
 /* =======================
    TYPES
@@ -94,7 +95,7 @@ export default function AdminUserPage() {
   ======================= */
   const fetchUsers = () => {
     setLoading(true);
-    fetch("https://mmes-sep490.onrender.com/get-all-user", {
+    fetch(`${envConfig.NEXT_API_ENDPOINT}/get-all-user`, {
       headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
     })
       .then((res) => res.json())
@@ -161,7 +162,7 @@ export default function AdminUserPage() {
     formData.append("file", file);
 
     try {
-      const res = await fetch("https://mmes-sep490.onrender.com/api/User/upload-users", {
+      const res = await fetch(`${envConfig.NEXT_API_ENDPOINT}/api/User/upload-users`, {
         method: "POST",
         headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
         body: formData,
@@ -200,7 +201,7 @@ export default function AdminUserPage() {
     setSubmitting(true);
     try {
       const res = await fetch(
-        `https://mmes-sep490.onrender.com/admin-update-user/${selectedUser.user_id}`,
+        `${envConfig.NEXT_API_ENDPOINT}/admin-update-user/${selectedUser.user_id}`,
         {
           method: "POST",
           headers: {

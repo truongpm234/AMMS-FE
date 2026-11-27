@@ -3,6 +3,7 @@
 import axios from "@/apiRequests/axios";
 import { requestOrderApi } from "@/apiRequests/request";
 import { getHubConnection } from "@/hooks/useNotifications";
+import envConfig from "@/lib/config";
 import { OrderRequest } from "@/schemaValidations/common.schema";
 import {
   CaretDownOutlined,
@@ -38,6 +39,7 @@ import dayjs from "dayjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { getErrorMessage } from "@/lib/httpAxios";
 
 const { Title } = Typography;
 
@@ -94,7 +96,9 @@ export default function ConsultantOrdersPage() {
 
     const initSignalR = async () => {
       try {
-        const hubUrl = "https://mmes-sep490.onrender.com/hubs/realtime";
+        // Hub URL lấy từ env — trước đây hardcode
+        // "https://mmes-sep490.onrender.com/hubs/realtime"
+        const hubUrl = `${envConfig.NEXT_API_ENDPOINT}/hubs/realtime`;
         const conn = await getHubConnection(hubUrl);
 
         const handleServerEvent = () => {
@@ -103,6 +107,14 @@ export default function ConsultantOrdersPage() {
           }
         };
 
+        /*
+         * YC-18 — BE chuẩn hoá tên event (kebab-case/lower-case) và đang phát
+         * SONG SONG tên chuẩn + tên cũ 1 sprint. Chỉ subscribe TÊN CHUẨN:
+         * subscribe cả 2 sẽ refresh 2 lần cho cùng 1 notification, và tên cũ
+         * sẽ bị BE xoá sau 1 sprint (chết im lặng).
+         *   - `paid`    thay cho `Paid`
+         *   - `importing` thay cho `Importing`
+         */
         const events = [
           "pending",
           "verified",
@@ -115,7 +127,6 @@ export default function ConsultantOrdersPage() {
           "pending-paid",
           "PendingPaid",
           "remaining-paid",
-          "Paid",
           "finishedProduction",
           "update-ui",
         ];
@@ -150,7 +161,7 @@ export default function ConsultantOrdersPage() {
     },
     onError: (error: any) => {
       console.error("Delete error:", error);
-      message.error(error.response?.data?.message || "Có lỗi xảy ra khi xóa");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra khi xóa"));
     },
   });
 
@@ -163,7 +174,7 @@ export default function ConsultantOrdersPage() {
     },
     onError: (error: any) => {
       console.error("Send deal error:", error);
-      message.error(error.response?.data?.message || "Có lỗi xảy ra khi gửi báo giá");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra khi gửi báo giá"));
     },
   });
 
@@ -176,7 +187,7 @@ export default function ConsultantOrdersPage() {
     },
     onError: (error: any) => {
       console.error("Clone error:", error);
-      message.error(error.response?.data?.message || "Có lỗi xảy ra khi nhân bản yêu cầu");
+      message.error(getErrorMessage(error, "Có lỗi xảy ra khi nhân bản yêu cầu"));
     },
   });
 
