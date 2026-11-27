@@ -3,7 +3,7 @@
 Hệ thống MES cho xưởng in & hộp giấy — phần **Frontend**.
 Backend: repo [`AMMS`](https://github.com/truongpm234/AMMS) — tài liệu API đầy đủ ở `BE.md` của repo BE.
 
-> 🌐 Live: https://daiphuchai.vercel.app
+> 🌐 Live: https://daiphuchaiamms.vercel.app
 
 > 📤 **[`BE_REQUESTS.md`](./BE_REQUESTS.md)** — **v3**: (A) 22 việc FE đã làm theo phản hồi BE,
 > (A′) 7 việc làm theo phản hồi v3 (gồm `YC-20` khẩn), (B) ~~2 câu hỏi~~ **đã được BE trả lời** +
@@ -258,7 +258,7 @@ Các kết luận quan trọng nhất:
 
 | Chủ đề | Contract CHÍNH THỨC |
 |---|---|
-| **Domain FE** | `https://daiphuchai.vercel.app` (config `Deal:BaseUrlFe`) |
+| **Domain FE** | `https://daiphuchaiamms.vercel.app` (config `Deal:BaseUrlFe`) |
 | **Route nhận redirect** | `/request-detail/{id}?payos=paid|pending&orderCode=` (thành công)<br>`/payment-result?payos=<lý do>&orderCode=` (**lỗi** — FE đã tạo route này)<br>`/payment-success/{id}?payos=paid` (luồng poll `remaining`)<br>`/reject-deal/{id}?status=cancel` (huỷ cọc)<br>`/payment/{id}?status=cancel` (huỷ phần còn lại) |
 | **Giá trị `payos`** | `paid` \| `pending` \| `invalid_order_code` \| `payment_not_found` \| `request_not_found` \| `error` |
 | **`estimate_id` trên URL redirect** | **KHÔNG cần** — BE đọc từ `payment.estimate_id` trong DB |

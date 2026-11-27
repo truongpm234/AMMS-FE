@@ -303,7 +303,7 @@ function EmailPreview({
   remaining: number;
   depositAmt: number;
 }) {
-  const feBase = "https://daiphuchai.vercel.app";
+  const feBase = envConfig.NEXT_URL;
   const paymentPageUrl = `${feBase}/payment/${order.order_id}`;
 
   return (

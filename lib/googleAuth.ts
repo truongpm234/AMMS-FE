@@ -21,7 +21,7 @@
  *   và domain production, nếu không GIS báo
  *   "The given origin is not allowed for the given client ID".
  *
- * Domain FE chính thức là https://daiphuchai.vercel.app, phải khai trong
+ * Domain FE chính thức là https://daiphuchaiamms.vercel.app, phải khai trong
  * Authorized JavaScript origins và Authorized redirect URIs của OAuth Client ID.
  *
  * sep490-fe.vercel.app là domain cũ, BE đã xoá khỏi mọi hard-code/fallback
